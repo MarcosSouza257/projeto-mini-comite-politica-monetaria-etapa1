@@ -1,7 +1,7 @@
 ## Etapa 1 — Montando os Cenários (PUC-Minas — Ciências Econômicas, 3º período)
 
 ### Objetivo
-Eu demonstro a relação entre Taxa Selic, matemática financeira, decisões de investimento e canais de transmissão da política monetária usando títulos do Tesouro Direto e aplicações de renda fixa, com simulações em Python.
+Demonstrar a relação entre Taxa Selic, decisões de investimento e canais de transmissão da política monetária usando títulos do Tesouro Direto e aplicações de renda fixa, com simulações em Python.
 
 ### Escopo
 - Meu investimento inicial: `R$ 100.000,00`
@@ -18,7 +18,7 @@ Eu demonstro a relação entre Taxa Selic, matemática financeira, decisões de 
   - Imposto de Renda: tabela regressiva (15% para prazo de 3 anos)
   - IOF: desconsiderado (prazos > 30 dias)
 
-> Observação: Considere IR conforme a natureza da aplicação (ex.: LCI é isenta de IR sobre rendimentos), mas mantenha a taxa de custódia de 0,2% a.a. conforme este enunciado. Caso deseje, faça uma nota na análise sobre práticas de mercado típicas.
+> Observação: Consideramos o IR de acordo com a natureza da aplicação (ex.: LCI é isenta de IR sobre rendimentos), porém mantivemos a taxa de custódia de 0,2% a.a.
 
 ---
 
@@ -38,23 +38,23 @@ Eu demonstro a relação entre Taxa Selic, matemática financeira, decisões de 
   - IPCA: 4% a.a. nos 3 anos
 
 ### Regras de rendimento por produto
-- Tesouro Selic 2028: rende a Selic efetiva diária. Assuma Selic Meta para simplificação.
+- Tesouro Selic 2028: rende a Selic efetiva diária.
 - Tesouro Prefixado 2028: rende 14% a.a. (taxa fixa), independente de cenário.
 - Tesouro IPCA+ 2028: rende IPCA + 7% a.a. (juros reais fixos de 7% a.a.).
-- CDB 100% do CDI: rende 100% da taxa DI; assuma DI ≈ Selic Meta.
-- LCI: rende 90% da Selic Meta (isenta de IR, porém aplicar custódia 0,2% a.a. conforme escopo).
+- CDB 100% do CDI: rende 100% da taxa DI;  DI ≈ Selic Meta.
+- LCI: rende 90% da Selic Meta (isenta de IR, porém aplica custódia 0,2% a.a. conforme escopo).
 - Poupança:
   - Se Selic Meta > 8,5% a.a.: 0,5% a.m.
   - Se Selic Meta ≤ 8,5% a.a.: 70% da Selic a.a. (converter para mensal)
-  - Em ambos os casos, somar TR fixa de 0,17% a.m. para todos os cenários
+  - Em ambos os casos, somamos TR fixa de 0,17% a.m. para todos os cenários
 
 ### Custos e impostos
-- Taxa de custódia (Tesouro/CDB/LCI): 0,2% a.a. — aplique de forma proporcional ao período (mensal/diária).
+- Taxa de custódia (Tesouro/CDB/LCI): 0,2% a.a. — aplicamos de forma proporcional ao período (mensal/diária).
 - IR (alíquota efetiva para 3 anos): 15% sobre os rendimentos (exceto LCI e Poupança, que são isentas de IR).
 
 ---
 
-## Parte 1 — Fórmulas e microfundamentos (matemática financeira)
+## Parte 1 — Fórmulas
 
 Use capitalização composta e equivalência de taxas.
 
@@ -86,8 +86,6 @@ Use capitalização composta e equivalência de taxas.
 
 ## Parte 2 — Implementação em Python
 
-Eu estruturei o projeto para permitir simulações totalmente paramétricas e reprodutíveis.
-
 ### Estrutura do projeto
 ```
 data/                 # saídas CSV (geradas opcionalmente)
@@ -102,19 +100,6 @@ src/
 main.py               # ponto de entrada (CLI)
 requirements.txt      # dependências
 README.md
-```
-
-### Dependências sugeridas
-- `python >= 3.10`
-- `pandas`, `numpy` (cálculos e tabelas)
-- `matplotlib` ou `seaborn` (gráficos)
-
-Arquivo `requirements.txt` (sugestão):
-```
-pandas>=2.0
-numpy>=1.24
-matplotlib>=3.7
-seaborn>=0.13
 ```
 
 ### Parâmetros globais no código
@@ -157,12 +142,12 @@ seaborn>=0.13
 - Retorna: série temporal com `saldo_bruto`, `custodia`, `saldo_pos_custodia`, e no fim `vf_bruto`, `ir_final`, `vf_liquido`.
 - Pode salvar CSV/JSON em `data/` e gráficos em `figures/`.
 
-### Como eu executo
-- Eu instalo as dependências:
+### Como executar
+- instale as dependências:
 ```
 pip install -r requirements.txt
 ```
-- Eu executo as simulações (valor inicial padrão R$ 100.000,00):
+- execute as simulações (valor inicial padrão R$ 100.000,00):
 ```
 python main.py
 ```
@@ -178,10 +163,10 @@ Saídas:
 
 ---
 
-## O que meu código faz
-- Eu construo as curvas mensais de Selic e IPCA por cenário (36 meses)
-- Eu simulo os produtos aplicando capitalização composta, custódia (0,2% a.a. equivalente mensal) e IR (15% no final quando aplicável)
-- Na poupança, eu considero TR fixa de 0,17% a.m. somada ao rendimento base
+## O que o código faz
+- Construe as curvas mensais de Selic e IPCA por cenário (36 meses)
+- Simula os produtos aplicando capitalização composta, custódia (0,2% a.a. equivalente mensal) e IR (15% no final quando aplicável)
+- Na poupança, TR fixa de 0,17% a.m. somada ao rendimento base
 - Eu gero resumos por cenário com VF bruto, IR e VF líquido; e gráficos opcionais
 
 ---
