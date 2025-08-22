@@ -178,18 +178,21 @@ def simulate_poupanca(
     selic_anual: Iterable[float],
     params: SimulationParams,
 ) -> dict:
-    """Poupança: regra vigente (TR≈0 para simplificação).
+    """Poupança: regra vigente com TR fixa de 0,17% a.m em todos os cenários.
 
     - Se Selic Meta > 8,5% a.a.: 0,5% a.m.
     - Caso contrário: 70% da Selic a.a. (converter para mensal)
+    - Em ambos os casos, somar TR = 0,17% a.m.
     - Sem IR e sem custódia
     """
     rates = []
+    tr_m = 0.0017  # 0,17% a.m.
     for s_aa in selic_anual:
         if s_aa > 0.085:
-            rates.append(0.005)  # 0,5% a.m.
+            base = 0.005  # 0,5% a.m.
         else:
-            rates.append(annual_to_monthly(0.70 * s_aa))
+            base = annual_to_monthly(0.70 * s_aa)
+        rates.append(base + tr_m)
 
     # Poupança não tem custódia nem IR
     df, vf_bruto, ir_final, vf_liq = _simulate_timeline(
