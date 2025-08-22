@@ -4,12 +4,12 @@ from typing import Dict
 
 import pandas as pd
 
-from .scenarios import (
+from scenarios import (
     scenario_manutencao,
     scenario_aperto,
     scenario_afrouxamento,
 )
-from .products import (
+from products import (
     SimulationParams,
     simulate_tesouro_prefixado,
     simulate_tesouro_ipca_plus,

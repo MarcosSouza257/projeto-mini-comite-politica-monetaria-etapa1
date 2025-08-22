@@ -5,7 +5,7 @@ from typing import Iterable, Optional, Tuple
 
 import pandas as pd
 
-from .rates import (
+from rates import (
     annual_to_monthly,
     equivalent_periodic_fee,
     compose_ipca_plus,
