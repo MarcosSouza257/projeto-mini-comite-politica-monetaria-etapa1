@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import pandas as pd
 
 
 def _ensure_src_on_path() -> None:
@@ -42,15 +43,15 @@ def main() -> None:
         combined_rows = []
         for scen_name, df in results.items():
             slug = scen_name.replace(" ", "_").lower()
-            out_path = os.path.join(args.out_dir, f"{slug}_summary.csv")
-            df.to_csv(out_path, index=False, encoding="utf-8")
+            out_path = os.path.join(args.out_dir, f"{slug}_summary.xlsx")
+            df.to_excel(out_path, index=False)
             # acumula para CSV combinado
             tmp = df.copy()
             tmp.insert(0, "cenario", scen_name)
             combined_rows.append(tmp)
-        combined = combined_rows[0].append(combined_rows[1:], ignore_index=True) if combined_rows else None
+        combined = pd.concat(combined_rows, ignore_index=True) if combined_rows else None
         if combined is not None:
-            combined.to_csv(os.path.join(args.out_dir, "resumo_todos_os_cenarios.csv"), index=False, encoding="utf-8")
+            combined.to_excel(os.path.join(args.out_dir, "resumo_todos_os_cenarios.xlsx"), index=False)
         print(f"\nResultados salvos em: {os.path.abspath(args.out_dir)}")
 
     # Gera gráficos, se solicitado

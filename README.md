@@ -166,7 +166,7 @@ Saídas:
 ## O que o código faz
 - Construe as curvas mensais de Selic e IPCA por cenário (36 meses)
 - Simula os produtos aplicando capitalização composta, custódia (0,2% a.a. equivalente mensal) e IR (15% no final quando aplicável)
-- Na poupança, TR fixa de 0,17% a.m. somada ao rendimento base
+- Na poupança, consideramos TR fixa de 0,17% a.m. somada ao rendimento base
 - Eu gero resumos por cenário com VF bruto, IR e VF líquido; e gráficos opcionais
 
 ---
