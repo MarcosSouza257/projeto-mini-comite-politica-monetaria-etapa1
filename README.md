@@ -44,8 +44,9 @@ Demonstrar a relação entre Taxa Selic, matemática financeira, decisões de in
 - CDB 100% do CDI: rende 100% da taxa DI; assuma DI ≈ Selic Meta.
 - LCI: rende 90% da Selic Meta (isenta de IR, porém aplicar custódia 0,2% a.a. conforme escopo).
 - Poupança:
-  - Se Selic Meta > 8,5% a.a.: 0,5% a.m. + TR (assumir TR ≈ 0% para simplificação)
-  - Se Selic Meta ≤ 8,5% a.a.: 70% da Selic a.a. + TR (assumir TR ≈ 0%)
+  - Se Selic Meta > 8,5% a.a.: 0,5% a.m.
+  - Se Selic Meta ≤ 8,5% a.a.: 70% da Selic a.a. (converter para mensal)
+  - Em ambos os casos, somar TR fixa de 0,17% a.m. para todos os cenários
 
 ### Custos e impostos
 - Taxa de custódia (Tesouro/CDB/LCI): 0,2% a.a. — aplique de forma proporcional ao período (mensal/diária).
@@ -87,21 +88,20 @@ Use capitalização composta e equivalência de taxas.
 
 Estruture o projeto para permitir simulações totalmente paramétricas e reprodutíveis.
 
-### Estrutura sugerida de pastas
+### Estrutura do projeto
 ```
-Etapa1/
-  ├── data/                # (opcional) guardar saídas CSV/JSON
-  ├── figures/             # (opcional) gráficos gerados
-  ├── src/
-  │   ├── scenarios.py     # define trajetórias de Selic e IPCA por cenário
-  │   ├── rates.py         # conversões de taxas (anual↔mensal↔diária), IPCA+ composição
-  │   ├── products.py      # classes/funções para cada produto (Tesouro, CDB, LCI, Poupança)
-  │   ├── taxes.py         # IR, custódia e aplicação por período
-  │   ├── simulate.py      # laços de simulação por mês/dia e agregação de resultados
-  │   └── plots.py         # (opcional) gráficos comparativos com matplotlib
-  ├── main.py              # ponto de entrada: roda todos os cenários e salva resultados
-  ├── requirements.txt     # dependências (pandas, numpy, matplotlib, etc.)
-  └── README.md
+data/                 # saídas CSV (geradas opcionalmente)
+figures/              # gráficos PNG (gerados opcionalmente)
+src/
+  ├── scenarios.py    # trajetórias de Selic e IPCA por cenário (36 meses)
+  ├── rates.py        # conversões de taxas (anual↔mensal↔diária), IPCA+ composição
+  ├── products.py     # simuladores: Tesouro, CDB, LCI, Poupança (com TR=0,17% a.m.)
+  ├── taxes.py        # utilitários de IR e custódia
+  ├── simulate.py     # orquestra simulações por cenário e produz resumos
+  └── plots.py        # gráficos comparativos (matplotlib)
+main.py               # ponto de entrada (CLI)
+requirements.txt      # dependências
+README.md
 ```
 
 ### Dependências sugeridas
@@ -157,21 +157,32 @@ seaborn>=0.13
 - Retorna: série temporal com `saldo_bruto`, `custodia`, `saldo_pos_custodia`, e no fim `vf_bruto`, `ir_final`, `vf_liquido`.
 - Pode salvar CSV/JSON em `data/` e gráficos em `figures/`.
 
-### Execução em `main.py`
-- Gera os três cenários.
-- Para cada produto x cenário, executa a simulação e agrega resultados em uma tabela resumo.
-- Exibe ranking por `vf_liquido` e, se desejado, plota gráficos comparativos.
+### Como executar
+- Instale dependências:
+```
+pip install -r requirements.txt
+```
+- Executar simulações (valor inicial padrão R$ 100.000,00):
+```
+python main.py
+```
+- Salvar resultados (CSVs) e gráficos (PNGs):
+```
+python main.py --initial 100000 \
+               --save-results --out-dir data \
+               --save-figures --fig-dir figures
+```
+Saídas:
+- `data/*_summary.csv` por cenário e `data/resumo_todos_os_cenarios.csv` combinado
+- `figures/*_summary.png` com VF líquido por produto
 
 ---
 
-## Instruções de cálculo (passo a passo rápido)
-1) Defina parâmetros na aba `Parametros` e preencha `Cenarios` com as taxas anuais por ano.
-2) Converta para taxas mensais e/ou diárias na `CurvasMensais` usando equivalência de taxas.
-3) Para cada produto, construa a linha do tempo de 36 meses:
-   - Capitalize com a taxa do período
-   - Dedique a custódia do período
-   - No mês final, calcule o IR devido (quando aplicável)
-4) Consolide no `Resumo` e gere gráficos comparativos.
+## O que o código faz
+- Constrói as curvas mensais de Selic e IPCA por cenário (36 meses)
+- Simula produtos aplicando capitalização composta, custódia (0,2% a.a. equivalente mensal), IR (15% no final quando aplicável)
+- Poupança considera TR fixa de 0,17% a.m. somada ao rendimento base
+- Gera resumos por cenário com VF bruto, IR e VF líquido; e gráficos opcionais
 
 ---
 
