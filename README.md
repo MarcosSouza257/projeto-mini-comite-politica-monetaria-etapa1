@@ -1,7 +1,7 @@
 ## Etapa 1 — Montando os Cenários (PUC-Minas — Ciências Econômicas, 3º período)
 
 ### Objetivo
-Demonstrar a relação entre Taxa Selic, decisões de investimento e canais de transmissão da política monetária usando títulos do Tesouro Direto e aplicações de renda fixa, com simulações em Python.
+demonstrar a relação entre a Taxa Selic, matemática financeira, decisões de investimento e os canais de transmissão da política monetária, utilizando títulos do Tesouro Direto e com simulações em Python.
 
 ### Escopo
 - Meu investimento inicial: `R$ 100.000,00`
@@ -18,7 +18,6 @@ Demonstrar a relação entre Taxa Selic, decisões de investimento e canais de t
   - Imposto de Renda: tabela regressiva (15% para prazo de 3 anos)
   - IOF: desconsiderado (prazos > 30 dias)
 
-> Observação: Consideramos o IR de acordo com a natureza da aplicação (ex.: LCI é isenta de IR sobre rendimentos), porém mantivemos a taxa de custódia de 0,2% a.a.
 
 ---
 
@@ -72,7 +71,6 @@ Use capitalização composta e equivalência de taxas.
 - Imposto de Renda (quando aplicável): `IR = 0,15 * (VF_bruto - VP)`
 - Valor futuro líquido: `VF_liq = VF_bruto - IR - Custódia_acumulada`
 
-> Observação: Para maior precisão, compute a custódia periodicamente sobre o saldo do período (similar a uma taxa administrativa recorrente). Em cenários simples, pode-se aproximar por subtração da taxa equivalente.
 
 ### Especificidades por produto
 - Tesouro Selic: capitalização diária útil. Use `i_d_selic` a cada dia útil do período.
@@ -105,7 +103,7 @@ README.md
 ### Parâmetros globais no código
 - Valor inicial: `100000.00`
 - Prazo: `36` meses
-- Dias úteis/ano: `252` (se usar granularidade diária)
+- Dias úteis/ano: `252` 
 - Custódia a.a.: `0.002` (0,2%)
 - IR: `0.15` (para 3 anos, quando aplicável)
 
@@ -126,10 +124,7 @@ README.md
   - `simulate_cdb_cdi(...)` (100% CDI≈Selic)
   - `simulate_lci(...)` (90% Selic; isenta de IR)
   - `simulate_poupanca(...)` (regras conforme Selic; sem IR e sem custódia)
-- Cada simulador deve:
-  1) aplicar capitalização no período (mês/dia)
-  2) aplicar custódia do período quando aplicável
-  3) acumular rendimentos para cálculo de IR ao final (quando aplicável)
+
 
 ### Custos e impostos em `taxes.py`
 - Custódia por período:
@@ -140,7 +135,7 @@ README.md
 ### Loop de simulação em `simulate.py`
 - Recebe: série de taxas por período (por cenário e produto), valor inicial, parâmetros de custos/IR.
 - Retorna: série temporal com `saldo_bruto`, `custodia`, `saldo_pos_custodia`, e no fim `vf_bruto`, `ir_final`, `vf_liquido`.
-- Pode salvar CSV/JSON em `data/` e gráficos em `figures/`.
+- Pode salvar .xlsx em `data/` e gráficos em `figures/`.
 
 ### Como executar
 - instale as dependências:
@@ -151,7 +146,7 @@ pip install -r requirements.txt
 ```
 python main.py
 ```
-- Para salvar resultados (CSVs) e gráficos (PNGs):
+- Para salvar resultados (xlsx) e gráficos (PNGs):
 ```
 python main.py --initial 100000 \
                --save-results --out-dir data \

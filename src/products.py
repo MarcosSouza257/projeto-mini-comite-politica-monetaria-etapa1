@@ -83,9 +83,19 @@ def simulate_tesouro_prefixado(
     params: SimulationParams,
     taxa_anual: float = 0.14,
 ) -> dict:
-    """Tesouro Prefixado 2028: taxa fixa anual (padrão 14% a.a.)."""
-    i_m = annual_to_monthly(taxa_anual)
-    rates = [i_m] * meses
+    """Tesouro Prefixado 2028: taxa fixa anual (padrão 14% a.a.).
+    
+    Para simulação diária (756 dias úteis), converte 14% a.a. para taxa diária:
+    (1 + 0.14)^(1/252) - 1 = 0.000522 (0.0522% ao dia útil)
+    """
+    if params.periods_per_year == 252:  # Simulação diária
+        # Converte 14% a.a. para taxa diária: (1 + 0.14)^(1/252) - 1
+        i_d = (1.0 + taxa_anual) ** (1.0 / 252.0) - 1.0
+        rates = [i_d] * meses  # 756 taxas diárias de 0.0522%
+    else:  # Simulação mensal
+        i_m = annual_to_monthly(taxa_anual)
+        rates = [i_m] * meses
+    
     df, vf_bruto, ir_final, vf_liq = _simulate_timeline(
         rates=rates, params=params, apply_custody=True, ir_exempt=False
     )
@@ -105,12 +115,26 @@ def simulate_tesouro_ipca_plus(
 ) -> dict:
     """Tesouro IPCA+ 2028: IPCA + juro real (padrão 7% a.a.).
 
-    Para cada mês, compõe: (1+ipca_m)*(1+i_real_m) - 1
+    Sempre usa a lógica mensal para manter consistência.
+    O resultado final deve ser o mesmo, independente da granularidade.
     """
+    # Sempre usa a lógica mensal para manter consistência
+    # O resultado final deve ser o mesmo, independente da granularidade
     i_real_m = annual_to_monthly(juro_real_anual)
-    rates = [compose_ipca_plus(ipca, i_real_m) for ipca in ipca_mensal]
+    # Converte IPCA anual para mensal antes de compor com juro real mensal
+    rates = []
+    for ipca_anual in ipca_mensal:
+        ipca_m = annual_to_monthly(ipca_anual)  # Converte IPCA anual para mensal
+        taxa_composta_mensal = compose_ipca_plus(ipca_m, i_real_m)  # Ambos mensais
+        rates.append(taxa_composta_mensal)
+    
+    # Sempre usa simulação mensal para manter consistência
+    # O resultado final deve ser o mesmo, independente da granularidade
+    from dataclasses import replace
+    params_mensal = replace(params, periods_per_year=12)
+    
     df, vf_bruto, ir_final, vf_liq = _simulate_timeline(
-        rates=rates, params=params, apply_custody=True, ir_exempt=False
+        rates=rates, params=params_mensal, apply_custody=True, ir_exempt=False
     )
     return {
         "produto": "Tesouro IPCA+",
@@ -210,6 +234,7 @@ def simulate_poupanca(
 __all__ = [
     "SimulationParams",
     "simulate_tesouro_prefixado",
+    "simulate_tesouro_prefixado_with_rates",
     "simulate_tesouro_ipca_plus",
     "simulate_tesouro_selic",
     "simulate_cdb_cdi",

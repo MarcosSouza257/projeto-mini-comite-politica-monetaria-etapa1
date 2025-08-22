@@ -95,6 +95,53 @@ def build_scenario_dataframe(
     return pd.DataFrame(data)
 
 
+def build_scenario_dataframe_daily(
+    definition: ScenarioDefinition,
+    business_days_per_year: int = 252,
+) -> pd.DataFrame:
+    """Constroi um DataFrame diário para o cenário informado (3 anos = 756 dias úteis).
+
+    Colunas:
+    - scenario: nome do cenário
+    - day_index: 1..756 (dias úteis)
+    - year: start_year, start_year+1, start_year+2 (repetido a cada 252 dias úteis)
+    - selic_aa, ipca_aa: taxas anuais daquele dia (valores anuais expandidos)
+    - selic_d, ipca_d: taxas efetivas diárias (dias úteis)
+    """
+    total_days = 3 * business_days_per_year  # 756 dias úteis
+    
+    # Expande taxas anuais para dias úteis
+    selic_aa_daily = []
+    ipca_aa_daily = []
+    for year_idx, (selic_aa, ipca_aa) in enumerate(zip(definition.selic_by_year, definition.ipca_by_year)):
+        selic_aa_daily.extend([selic_aa] * business_days_per_year)
+        ipca_aa_daily.extend([ipca_aa] * business_days_per_year)
+    
+    # Day index and year mapping
+    day_index = list(range(1, total_days + 1))
+    years = []
+    for i in day_index:
+        # Days 1..252 -> Y0, 253..504 -> Y1, 505..756 -> Y2
+        year_offset = (i - 1) // business_days_per_year
+        years.append(definition.start_year + year_offset)
+
+    # Daily conversions
+    selic_d = [annual_to_daily(x, business_days_per_year) for x in selic_aa_daily]
+    ipca_d = [annual_to_daily(x, business_days_per_year) for x in ipca_aa_daily]
+
+    data = {
+        "scenario": [definition.name] * total_days,
+        "day_index": day_index,
+        "year": years,
+        "selic_aa": selic_aa_daily,
+        "ipca_aa": ipca_aa_daily,
+        "selic_d": selic_d,
+        "ipca_d": ipca_d,
+    }
+
+    return pd.DataFrame(data)
+
+
 # ------------------------------
 # Cenários pré-definidos
 # ------------------------------
@@ -106,6 +153,16 @@ def scenario_manutencao(include_daily_columns: bool = False) -> pd.DataFrame:
         ipca_by_year=[0.045, 0.045, 0.045],
     )
     return build_scenario_dataframe(definition, include_daily_columns=include_daily_columns)
+
+
+def scenario_manutencao_daily() -> pd.DataFrame:
+    """Cenário 1 (Manutenção): versão diária com 756 dias úteis."""
+    definition = ScenarioDefinition(
+        name="Cenario 1 - Manutencao",
+        selic_by_year=[0.15, 0.15, 0.15],
+        ipca_by_year=[0.045, 0.045, 0.045],
+    )
+    return build_scenario_dataframe_daily(definition)
 
 
 def scenario_aperto(include_daily_columns: bool = False) -> pd.DataFrame:
@@ -121,6 +178,16 @@ def scenario_aperto(include_daily_columns: bool = False) -> pd.DataFrame:
     return build_scenario_dataframe(definition, include_daily_columns=include_daily_columns)
 
 
+def scenario_aperto_daily() -> pd.DataFrame:
+    """Cenário 2 (Aperto): versão diária com 756 dias úteis."""
+    definition = ScenarioDefinition(
+        name="Cenario 2 - Aperto",
+        selic_by_year=[0.15, 0.165, 0.17],
+        ipca_by_year=[0.045, 0.05, 0.055],
+    )
+    return build_scenario_dataframe_daily(definition)
+
+
 def scenario_afrouxamento(include_daily_columns: bool = False) -> pd.DataFrame:
     """Cenário 3 (Afrouxamento Monetário):
     - Selic: 15% (2025), 13% (2026), 11% (2027)
@@ -132,6 +199,16 @@ def scenario_afrouxamento(include_daily_columns: bool = False) -> pd.DataFrame:
         ipca_by_year=[0.04, 0.04, 0.04],
     )
     return build_scenario_dataframe(definition, include_daily_columns=include_daily_columns)
+
+
+def scenario_afrouxamento_daily() -> pd.DataFrame:
+    """Cenário 3 (Afrouxamento): versão diária com 756 dias úteis."""
+    definition = ScenarioDefinition(
+        name="Cenario 3 - Afrouxamento",
+        selic_by_year=[0.15, 0.13, 0.11],
+        ipca_by_year=[0.04, 0.04, 0.04],
+    )
+    return build_scenario_dataframe_daily(definition)
 
 
 def get_all_scenarios(include_daily_columns: bool = False) -> Dict[str, pd.DataFrame]:
@@ -149,9 +226,13 @@ __all__ = [
     "annual_to_monthly",
     "annual_to_daily",
     "build_scenario_dataframe",
+    "build_scenario_dataframe_daily",
     "scenario_manutencao",
+    "scenario_manutencao_daily",
     "scenario_aperto",
+    "scenario_aperto_daily",
     "scenario_afrouxamento",
+    "scenario_afrouxamento_daily",
     "get_all_scenarios",
 ]
 
