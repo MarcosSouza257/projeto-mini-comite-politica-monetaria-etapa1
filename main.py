@@ -26,8 +26,8 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     _ensure_src_on_path()
 
-    from simulate import run_all_with_timelines
-    from plots import plot_all_scenarios_summary
+    from src.simulate import run_all_with_timelines
+    from src.plots import plot_all_scenarios_summary
 
     args = parse_args()
     results = run_all_with_timelines(initial_value=args.initial)

@@ -1,4 +1,5 @@
-## Etapa 1 — Montando os Cenários (PUC-Minas — Ciências Econômicas, 3º período)
+## Etapa 1 — Montando os Cenários 
+## PUC-Minas — Ciências Econômicas, 3º período
 
 ### Objetivo
 demonstrar a relação entre a Taxa Selic, matemática financeira, decisões de investimento e os canais de transmissão da política monetária, utilizando títulos do Tesouro Direto e com simulações em Python.
