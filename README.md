@@ -151,30 +151,5 @@ python main.py --initial 100000 \
                --save-figures --fig-dir figures
 ```
 **Saídas:**
-- `data/*_summary.csv` por cenário e `data/resumo_todos_os_cenarios.csv` combinado
+- `data/resumo_todos_os_cenarios.xlsx` combinado
 - `figures/*_summary.png` com VF líquido por produto
-
----
-
-## O que o código faz
-- Constrói as curvas mensais de Selic e IPCA por cenário (36 meses)
-- Simula os produtos aplicando capitalização composta, custódia (0,2% a.a. equivalente mensal) e IR (15% no final quando aplicável)
-- Na poupança, consideramos TR fixa de 0,17% a.m. somada ao rendimento base
-- Gera resumos por cenário com VF bruto, IR e VF líquido; e gráficos opcionais
-
----
-
-## O que analisar no relatório (texto)
-- Como as mudanças na Selic impactam cada produto (canais de transmissão).
-- Diferença entre retornos nominais e reais (ajustar por IPCA quando pertinente).
-- Efeito das taxas (custódia e IR) sobre o ranking dos investimentos.
-- Sensibilidade do Tesouro IPCA+ à inflação e do Prefixado à trajetória de juros.
-- Decisões de portfólio: qual produto domina em cada cenário e por quê.
-
----
-
-## Notas finais
-- Se desejar maior precisão, utilize granularidade diária para Tesouro Selic e custódia diária para todos os produtos com custódia.
-- Documente quaisquer simplificações (ex.: TR≈0, CDI≈Selic) no relatório.
-- Valide fórmulas com casos de teste simples (ex.: taxa zero, 1 mês) antes da simulação completa.
-
