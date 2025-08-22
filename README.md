@@ -1,11 +1,11 @@
 ## Etapa 1 — Montando os Cenários (PUC-Minas — Ciências Econômicas, 3º período)
 
 ### Objetivo
-Demonstrar a relação entre Taxa Selic, matemática financeira, decisões de investimento e canais de transmissão da política monetária usando títulos do Tesouro Direto e aplicações de renda fixa, com simulações em Python.
+Eu demonstro a relação entre Taxa Selic, matemática financeira, decisões de investimento e canais de transmissão da política monetária usando títulos do Tesouro Direto e aplicações de renda fixa, com simulações em Python.
 
 ### Escopo
-- Investimento inicial: `R$ 100.000,00`
-- Prazo: 3 anos (36 meses; 756 dias corridos ≈ 252 dias úteis/ano)
+- Meu investimento inicial: `R$ 100.000,00`
+- Prazo de simulação: 3 anos (36 meses; 756 dias corridos ≈ 252 dias úteis/ano)
 - Produtos simulados:
   - Tesouro Selic 2028 (capitalização diária)
   - Tesouro Prefixado 2028 (taxa fixa)
@@ -86,7 +86,7 @@ Use capitalização composta e equivalência de taxas.
 
 ## Parte 2 — Implementação em Python
 
-Estruture o projeto para permitir simulações totalmente paramétricas e reprodutíveis.
+Eu estruturei o projeto para permitir simulações totalmente paramétricas e reprodutíveis.
 
 ### Estrutura do projeto
 ```
@@ -157,16 +157,16 @@ seaborn>=0.13
 - Retorna: série temporal com `saldo_bruto`, `custodia`, `saldo_pos_custodia`, e no fim `vf_bruto`, `ir_final`, `vf_liquido`.
 - Pode salvar CSV/JSON em `data/` e gráficos em `figures/`.
 
-### Como executar
-- Instale dependências:
+### Como eu executo
+- Eu instalo as dependências:
 ```
 pip install -r requirements.txt
 ```
-- Executar simulações (valor inicial padrão R$ 100.000,00):
+- Eu executo as simulações (valor inicial padrão R$ 100.000,00):
 ```
 python main.py
 ```
-- Salvar resultados (CSVs) e gráficos (PNGs):
+- Para salvar resultados (CSVs) e gráficos (PNGs):
 ```
 python main.py --initial 100000 \
                --save-results --out-dir data \
@@ -178,11 +178,11 @@ Saídas:
 
 ---
 
-## O que o código faz
-- Constrói as curvas mensais de Selic e IPCA por cenário (36 meses)
-- Simula produtos aplicando capitalização composta, custódia (0,2% a.a. equivalente mensal), IR (15% no final quando aplicável)
-- Poupança considera TR fixa de 0,17% a.m. somada ao rendimento base
-- Gera resumos por cenário com VF bruto, IR e VF líquido; e gráficos opcionais
+## O que meu código faz
+- Eu construo as curvas mensais de Selic e IPCA por cenário (36 meses)
+- Eu simulo os produtos aplicando capitalização composta, custódia (0,2% a.a. equivalente mensal) e IR (15% no final quando aplicável)
+- Na poupança, eu considero TR fixa de 0,17% a.m. somada ao rendimento base
+- Eu gero resumos por cenário com VF bruto, IR e VF líquido; e gráficos opcionais
 
 ---
 
@@ -192,14 +192,6 @@ Saídas:
 - Efeito das taxas (custódia e IR) sobre o ranking dos investimentos.
 - Sensibilidade do Tesouro IPCA+ à inflação e do Prefixado à trajetória de juros.
 - Decisões de portfólio: qual produto domina em cada cenário e por quê.
-
----
-
-## Checklist de entrega
-- [ ] Planilha Excel com todas as abas (paramétricas e limpas)
-- [ ] README (este arquivo) preenchido com `VALORDOGRUPO`
-- [ ] Relatório sucinto (2–4 páginas) com análise dos resultados e canais de transmissão
-- [ ] Gráficos e tabelas no `Resumo` comparando resultados líquidos
 
 ---
 
