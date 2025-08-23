@@ -1,245 +1,153 @@
 from __future__ import annotations
-
 from dataclasses import dataclass
-from typing import Iterable, Optional, Tuple
-
+from typing import Iterable
 import pandas as pd
-
-from rates import (
-    annual_to_monthly,
-    equivalent_periodic_fee,
-    compose_ipca_plus,
-)
+from rates import annual_to_monthly, equivalent_periodic_fee, compose_ipca_plus
+from config import TR_MENSAL_FIXA, MESES_SIMULACAO, DIAS_UTEIS_POR_ANO
 
 
 @dataclass(frozen=True)
 class SimulationParams:
-    """Parâmetros comuns de simulação por período (mensal por padrão).
-
-    - initial: valor inicial (VP)
-    - annual_custody: taxa de custódia anual (ex.: 0,002 = 0,2% a.a.)
-    - ir_rate: alíquota de IR sobre rendimentos ao final (ex.: 0,15)
-    - periods_per_year: períodos por ano (12 para mensal)
-    """
-
+    """Parâmetros de simulação."""
     initial: float
     annual_custody: float = 0.002
     ir_rate: float = 0.15
     periods_per_year: int = 12
 
 
-def _simulate_timeline(
+def simulate_product(
     rates: Iterable[float],
     params: SimulationParams,
-    apply_custody: bool,
-    ir_exempt: bool,
-) -> Tuple[pd.DataFrame, float, float, float]:
-    """Executa a linha do tempo mensal:
-
-    - Acumula saldo bruto sem custódia (base do IR)
-    - Aplica custódia por período (quando aplicável) sobre o saldo de fim do período
-    - Ao final, calcula IR sobre (VF_bruto - VP), isentando quando necessário
-    - Retorna DataFrame por período e (vf_bruto, ir_final, vf_liquido)
-    """
-
-    custody_per_period = equivalent_periodic_fee(
-        params.annual_custody, params.periods_per_year
-    ) if apply_custody else 0.0
+    produto_nome: str,
+    apply_custody: bool = True,
+    ir_exempt: bool = False,
+) -> dict:
+    """Simula um produto financeiro genérico."""
+    custody_per_period = (
+        equivalent_periodic_fee(params.annual_custody, params.periods_per_year)
+        if apply_custody else 0.0
+    )
 
     period_list = []
     saldo_sem_custodia = params.initial
-    custodia_acumulada = 0.0
+    saldo_com_custodia = params.initial
 
-    for t, i_m in enumerate(rates, start=1):
-        saldo_bruto_fim = saldo_sem_custodia * (1.0 + i_m)
-        custodia = (saldo_bruto_fim * custody_per_period) if apply_custody else 0.0
-        saldo_pos_custodia = saldo_bruto_fim - custodia
+    for i, rate in enumerate(rates, 1):
+        # Aplica rendimento
+        saldo_sem_custodia *= (1.0 + rate)
+        saldo_com_custodia *= (1.0 + rate)
+        
+        # Aplica custódia
+        custodia_periodo = saldo_com_custodia * custody_per_period if apply_custody else 0.0
+        saldo_com_custodia -= custodia_periodo
 
-        period_list.append(
-            {
-                "periodo": t,
-                "taxa_periodo": i_m,
-                "saldo_bruto_fim": saldo_bruto_fim,
-                "custodia": custodia,
-                "saldo_pos_custodia": saldo_pos_custodia,
-            }
-        )
-
-        # A base de IR segue a evolução sem custódia (rendimento financeiro)
-        saldo_sem_custodia = saldo_bruto_fim
-        custodia_acumulada += custodia
-
-    vf_bruto = saldo_sem_custodia
-    rendimento_bruto = max(0.0, vf_bruto - params.initial)
-    ir_final = 0.0 if ir_exempt else params.ir_rate * rendimento_bruto
-    vf_liquido = vf_bruto - ir_final - custodia_acumulada
+        period_list.append({
+            "periodo": i,
+            "taxa": rate,
+            "saldo_bruto": saldo_sem_custodia,
+            "custodia": custodia_periodo,
+            "saldo_pos_custodia": saldo_com_custodia,
+        })
 
     df = pd.DataFrame(period_list)
-    return df, vf_bruto, ir_final, vf_liquido
-
-
-def simulate_tesouro_prefixado(
-    meses: int,
-    params: SimulationParams,
-    taxa_anual: float = 0.14,
-) -> dict:
-    """Tesouro Prefixado 2028: taxa fixa anual (padrão 14% a.a.).
+    vf_bruto = saldo_sem_custodia
     
-    Para simulação diária (756 dias úteis), converte 14% a.a. para taxa diária:
-    (1 + 0.14)^(1/252) - 1 = 0.000522 (0.0522% ao dia útil)
-    """
+    # Calcula IR
+    if ir_exempt:
+        ir_final = 0.0
+    else:
+        ganho = max(0.0, vf_bruto - params.initial)
+        ir_final = ganho * params.ir_rate
+    
+    vf_liquido = saldo_com_custodia - ir_final
+
+    return {
+        "produto": produto_nome,
+        "timeline": df,
+        "vf_bruto": vf_bruto,
+        "ir_final": ir_final,
+        "vf_liquido": vf_liquido,
+    }
+
+
+def simulate_tesouro_prefixado(meses: int, params: SimulationParams, taxa_anual: float = 0.14) -> dict:
+    """Tesouro Prefixado: taxa fixa de 14% a.a."""
     if params.periods_per_year == 252:  # Simulação diária
-        # Converte 14% a.a. para taxa diária: (1 + 0.14)^(1/252) - 1
-        i_d = (1.0 + taxa_anual) ** (1.0 / 252.0) - 1.0
-        rates = [i_d] * meses  # 756 taxas diárias de 0.0522%
+        rate = (1.0 + taxa_anual) ** (1.0 / 252.0) - 1.0
     else:  # Simulação mensal
-        i_m = annual_to_monthly(taxa_anual)
-        rates = [i_m] * meses
+        rate = annual_to_monthly(taxa_anual)
     
-    df, vf_bruto, ir_final, vf_liq = _simulate_timeline(
-        rates=rates, params=params, apply_custody=True, ir_exempt=False
-    )
-    return {
-        "produto": "Tesouro Prefixado",
-        "timeline": df,
-        "vf_bruto": vf_bruto,
-        "ir_final": ir_final,
-        "vf_liquido": vf_liq,
-    }
+    rates = [rate] * meses
+    return simulate_product(rates, params, "Tesouro Prefixado", apply_custody=True, ir_exempt=False)
 
 
-def simulate_tesouro_ipca_plus(
-    ipca_mensal: Iterable[float],
-    params: SimulationParams,
-    juro_real_anual: float = 0.07,
-) -> dict:
-    """Tesouro IPCA+ 2028: IPCA + juro real (padrão 7% a.a.).
-
-    Sempre usa a lógica mensal para manter consistência.
-    O resultado final deve ser o mesmo, independente da granularidade.
-    """
-    # Sempre usa a lógica mensal para manter consistência
-    # O resultado final deve ser o mesmo, independente da granularidade
+def simulate_tesouro_ipca_plus(ipca_mensal: Iterable[float], params: SimulationParams, juro_real_anual: float = 0.07) -> dict:
+    """Tesouro IPCA+: IPCA + 7% a.a. real."""
     i_real_m = annual_to_monthly(juro_real_anual)
-    # Converte IPCA anual para mensal antes de compor com juro real mensal
     rates = []
+    
     for ipca_anual in ipca_mensal:
-        ipca_m = annual_to_monthly(ipca_anual)  # Converte IPCA anual para mensal
-        taxa_composta_mensal = compose_ipca_plus(ipca_m, i_real_m)  # Ambos mensais
-        rates.append(taxa_composta_mensal)
+        ipca_m = annual_to_monthly(ipca_anual)
+        taxa_composta = compose_ipca_plus(ipca_m, i_real_m)
+        rates.append(taxa_composta)
     
-    # Sempre usa simulação mensal para manter consistência
-    # O resultado final deve ser o mesmo, independente da granularidade
-    from dataclasses import replace
-    params_mensal = replace(params, periods_per_year=12)
-    
-    df, vf_bruto, ir_final, vf_liq = _simulate_timeline(
-        rates=rates, params=params_mensal, apply_custody=True, ir_exempt=False
-    )
-    return {
-        "produto": "Tesouro IPCA+",
-        "timeline": df,
-        "vf_bruto": vf_bruto,
-        "ir_final": ir_final,
-        "vf_liquido": vf_liq,
-    }
+    return simulate_product(rates, params, "Tesouro IPCA+", apply_custody=True, ir_exempt=False)
 
 
-def simulate_tesouro_selic(
-    selic_mensal: Iterable[float],
-    params: SimulationParams,
-) -> dict:
-    """Tesouro Selic 2028: usa a Selic mensal equivalente (aproximação de diária)."""
-    df, vf_bruto, ir_final, vf_liq = _simulate_timeline(
-        rates=list(selic_mensal), params=params, apply_custody=True, ir_exempt=False
-    )
-    return {
-        "produto": "Tesouro Selic",
-        "timeline": df,
-        "vf_bruto": vf_bruto,
-        "ir_final": ir_final,
-        "vf_liquido": vf_liq,
-    }
+def simulate_tesouro_selic(selic_mensal: Iterable[float], params: SimulationParams) -> dict:
+    """Tesouro Selic: acompanha a Selic."""
+    return simulate_product(list(selic_mensal), params, "Tesouro Selic", apply_custody=True, ir_exempt=False)
 
 
-def simulate_cdb_cdi(
-    cdi_mensal: Iterable[float],
-    params: SimulationParams,
-) -> dict:
-    """CDB 100% do CDI: assume CDI ≈ Selic (usar série mensal correspondente)."""
-    df, vf_bruto, ir_final, vf_liq = _simulate_timeline(
-        rates=list(cdi_mensal), params=params, apply_custody=True, ir_exempt=False
-    )
-    return {
-        "produto": "CDB 100% CDI",
-        "timeline": df,
-        "vf_bruto": vf_bruto,
-        "ir_final": ir_final,
-        "vf_liquido": vf_liq,
-    }
+def simulate_cdb_cdi(cdi_mensal: Iterable[float], params: SimulationParams) -> dict:
+    """CDB 100% CDI: assume CDI ≈ Selic."""
+    return simulate_product(list(cdi_mensal), params, "CDB 100% CDI", apply_custody=True, ir_exempt=False)
 
 
-def simulate_lci(
-    selic_mensal: Iterable[float],
-    params: SimulationParams,
-    fator: float = 0.90,
-) -> dict:
-    """LCI: rende fração da Selic (padrão 90%), isenta de IR. Aplica custódia."""
+def simulate_lci(selic_mensal: Iterable[float], params: SimulationParams, fator: float = 0.90) -> dict:
+    """LCI: 90% da Selic, isenta de IR."""
     rates = [fator * x for x in selic_mensal]
-    df, vf_bruto, ir_final, vf_liq = _simulate_timeline(
-        rates=rates, params=params, apply_custody=True, ir_exempt=True
-    )
-    return {
-        "produto": "LCI",
-        "timeline": df,
-        "vf_bruto": vf_bruto,
-        "ir_final": ir_final,
-        "vf_liquido": vf_liq,
-    }
+    return simulate_product(rates, params, "LCI", apply_custody=True, ir_exempt=True)
+
+def get_poupanca_base_rate(selic_aa: float) -> float:
+    """Calcula taxa base da poupança (sem TR) em termos mensais."""
+    if selic_aa > 0.085:  # Selic > 8,5% a.a.
+        return 0.005  # 0,5% a.m.
+    return annual_to_monthly(0.70 * selic_aa)
 
 
-def simulate_poupanca(
-    selic_anual: Iterable[float],
-    params: SimulationParams,
-) -> dict:
-    """Poupança: regra vigente com TR fixa de 0,17% a.m em todos os cenários.
-
-    - Se Selic Meta > 8,5% a.a.: 0,5% a.m.
-    - Caso contrário: 70% da Selic a.a. (converter para mensal)
-    - Em ambos os casos, somar TR = 0,17% a.m.
-    - Sem IR e sem custódia
+def simulate_poupanca(selic_anual: Iterable[float], params: SimulationParams) -> dict:
+    """Simula a poupança conforme regra vigente:
+    - Selic > 8,5% a.a. → 0,5% a.m. + TR
+    - Selic ≤ 8,5% a.a. → 70% da Selic a.a. (convertido a.m.) + TR
+    Obs: Capitalização é mensal (data de aniversário).
     """
+    tr_m = TR_MENSAL_FIXA
+    selic_list = list(selic_anual)
     rates = []
-    tr_m = 0.0017  # 0,17% a.m.
-    for s_aa in selic_anual:
-        if s_aa > 0.085:
-            base = 0.005  # 0,5% a.m.
-        else:
-            base = annual_to_monthly(0.70 * s_aa)
-        rates.append(base + tr_m)
 
-    # Poupança não tem custódia nem IR
-    df, vf_bruto, ir_final, vf_liq = _simulate_timeline(
-        rates=rates, params=params, apply_custody=False, ir_exempt=True
-    )
-    return {
-        "produto": "Poupanca",
-        "timeline": df,
-        "vf_bruto": vf_bruto,
-        "ir_final": ir_final,
-        "vf_liquido": vf_liq,
-    }
+    if params.periods_per_year == DIAS_UTEIS_POR_ANO: 
+        dias_por_mes = 21
+        for mes in range(len(selic_list) // dias_por_mes):
+            idx_dia = mes * dias_por_mes
+            s_aa = selic_list[idx_dia]
 
+            # Taxa mensal da poupança
+            taxa_mensal = get_poupanca_base_rate(s_aa) + tr_m
 
-__all__ = [
-    "SimulationParams",
-    "simulate_tesouro_prefixado",
-    "simulate_tesouro_prefixado_with_rates",
-    "simulate_tesouro_ipca_plus",
-    "simulate_tesouro_selic",
-    "simulate_cdb_cdi",
-    "simulate_lci",
-    "simulate_poupanca",
-]
+            # Durante o mês não há rendimento (dias sem aniversário)
+            rates.extend([0.0] * (dias_por_mes - 1))
 
+            # No aniversário (último dia do mês), aplica a taxa mensal
+            rates.append(taxa_mensal)
 
+        # Ajuste se houver sobra de dias no final
+        if len(rates) < len(selic_list):
+            rates.extend([0.0] * (len(selic_list) - len(rates)))
+        rates = rates[:len(selic_list)]
+
+    else:  # Simulação mensal (36 meses, por ex.)
+        for s_aa in selic_list:
+            rates.append(get_poupanca_base_rate(s_aa) + tr_m)
+    
+    return simulate_product(rates, params, "Poupanca", apply_custody=False, ir_exempt=True)
