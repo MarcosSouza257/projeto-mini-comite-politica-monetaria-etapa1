@@ -12,7 +12,6 @@ MESES_POR_ANO = 12
 
 # Parâmetros de custódia e impostos
 TAXA_CUSTODIA_ANUAL = 0.002  # 0,2% a.a.
-ALIQUOTA_IR = 0.15          # 15% para investimentos (ajustado automaticamente por prazo)
 TR_MENSAL_FIXA = 0.0017     # 0,17% a.m. para poupança
 
 # Parâmetros de mercado

@@ -49,7 +49,12 @@ Este projeto visa demonstrar a relação entre a Taxa Selic, matemática finance
 
 ### Custos e impostos
 - **Taxa de custódia (Tesouro/CDB/LCI):** 0,2% a.a. — aplicamos de forma proporcional ao período (mensal/diária).
-- **IR (alíquota efetiva para 3 anos):** 15% sobre os rendimentos (exceto LCI e Poupança, que são isentas de IR).
+- **IR (tabela regressiva):** Aplicamos alíquotas decrescentes conforme tempo de aplicação:
+  - Até 180 dias: 22,5%
+  - De 181 a 360 dias: 20,0%
+  - De 361 a 720 dias: 17,5%
+  - Acima de 720 dias: 15,0%
+- **Produtos isentos de IR:** LCI e Poupança não pagam Imposto de Renda sobre rendimentos.
 
 ---
 
@@ -68,7 +73,11 @@ Use capitalização composta e equivalência de taxas.
   - Mensal: `c_m = (1 + 0,002)^(1/12) - 1`
   - Diária útil: `c_d = (1 + 0,002)^(1/252) - 1`
   - Aplicar como encargo recorrente sobre o saldo.
-- **Imposto de Renda (quando aplicável):** `IR = 0,15 * (VF_bruto - VP)`
+- **Imposto de Renda (tabela regressiva):** Alíquota varia conforme tempo:
+  - 0-180 dias: 22,5% * (VF_bruto - VP)
+  - 181-360 dias: 20,0% * (VF_bruto - VP)  
+  - 361-720 dias: 17,5% * (VF_bruto - VP)
+  - 721+ dias: 15,0% * (VF_bruto - VP)
 - **Valor futuro líquido:** `VF_liq = VF_bruto - IR - Custódia_acumulada`
 
 ### Especificidades por produto
@@ -108,12 +117,17 @@ Para alterar facilmente os parâmetros do projeto, edite o arquivo `src/config.p
 - **ANOS_SIMULACAO:** `3` ← **Altere aqui para mudar o período (1, 2, 3, 5 anos, etc.)**
 - **DIAS_UTEIS_POR_ANO:** `252` (padrão do mercado brasileiro)
 - **TAXA_CUSTODIA_ANUAL:** `0.002` (0,2% a.a.)
-- **ALIQUOTA_IR:** `0.15` (15% - ajustada automaticamente por prazo)
+
 - **TR_MENSAL_FIXA:** `0.0017` (0,17% a.m. para poupança)
+- **SPREAD_CDI_SELIC:** `-0.001` (CDI 0,1 p.p. abaixo da Selic)
 
 **Parâmetros calculados automaticamente:**
 - **MESES_SIMULACAO:** `ANOS_SIMULACAO * 12` (36 meses para 3 anos)
 - **DIAS_UTEIS_SIMULACAO:** `ANOS_SIMULACAO * 252` (756 dias úteis para 3 anos)
+
+#### Configurações de Impostos (`src/taxes.py`)
+- **TABELA_IR:** Alíquotas regressivas de IR (22,5%, 20%, 17,5%, 15%)
+- As alíquotas raramente mudam na legislação, por isso ficam no módulo de impostos
 
 #### Cenários Econômicos:
 Os cenários estão definidos no dicionário `CENARIOS` e são **automaticamente incluídos** nas simulações:
@@ -201,3 +215,22 @@ python main.py --initial 100000 \
 **Saídas:**
 - `data/simulacao_por_titulo.xlsx` com aba por produto + aba resumo
 - `figures/*_summary.png` com VF líquido por produto
+
+---
+
+## 🆕 Novas Funcionalidades
+
+### Imposto de Renda Regressivo ⏰
+- **Tabela regressiva:** Alíquotas decrescem com o tempo de aplicação
+- **Provisão diária:** Cálculo da provisão de IR atualizada a cada período  
+- **Timeline detalhado:** Novas colunas `provisao_ir` e `saldo_liquido_estimado`
+
+### CDI vs Selic Diferenciado 📊
+- **CDI realista:** CDI fica 0,1 p.p. abaixo da Selic (conforme B3)
+- **CDB 100% CDI:** Agora rende CDI real, não Selic
+- **Diferenciação:** ~R$ 400 de diferença em 3 anos (R$ 100k)
+
+### Configurações Flexíveis ⚙️
+- **Cenários dinâmicos:** Fácil criação de novos cenários em `config.py`
+- **Parâmetros centralizados:** Todos os valores configuráveis em um só lugar
+- **Tabela IR configurável:** Possibilidade de alterar alíquotas se necessário

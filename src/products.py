@@ -4,6 +4,7 @@ from typing import Iterable
 import pandas as pd
 from rates import annual_to_monthly, annual_to_daily, monthly_to_annual, daily_to_annual, equivalent_periodic_fee, compose_ipca_plus
 from config import TR_MENSAL_FIXA, DIAS_UTEIS_POR_ANO, SPREAD_CDI_SELIC
+from taxes import calculate_ir_provision
 
 
 @dataclass(frozen=True)
@@ -11,7 +12,6 @@ class SimulationParams:
     """Parâmetros de simulação."""
     initial: float
     annual_custody: float = 0.002
-    ir_rate: float = 0.15
     periods_per_year: int = 12
 
 
@@ -40,6 +40,15 @@ def simulate_product(
         # Aplica custódia
         custodia_periodo = saldo_com_custodia * custody_per_period if apply_custody else 0.0
         saldo_com_custodia -= custodia_periodo
+        
+        # Calcula provisão de IR baseada no tempo
+        provisao_ir = calculate_ir_provision(
+            valor_inicial=params.initial,
+            saldo_atual=saldo_sem_custodia,
+            periodo=i-1,  # 0-based para função
+            periods_per_year=params.periods_per_year,
+            ir_exempt=ir_exempt
+        )
 
         period_list.append({
             "periodo": i,
@@ -47,17 +56,19 @@ def simulate_product(
             "saldo_bruto": saldo_sem_custodia,
             "custodia": custodia_periodo,
             "saldo_pos_custodia": saldo_com_custodia,
+            "provisao_ir": provisao_ir,
+            "saldo_liquido_estimado": saldo_com_custodia - provisao_ir,
         })
 
     df = pd.DataFrame(period_list)
     vf_bruto = saldo_sem_custodia
     
-    # Calcula IR
+    # Calcula IR final usando tabela regressiva
     if ir_exempt:
         ir_final = 0.0
     else:
-        ganho = max(0.0, vf_bruto - params.initial)
-        ir_final = ganho * params.ir_rate
+        # Usa a provisão do último período (que tem a alíquota final)
+        ir_final = df.iloc[-1]["provisao_ir"] if len(df) > 0 else 0.0
     
     vf_liquido = saldo_com_custodia - ir_final
 

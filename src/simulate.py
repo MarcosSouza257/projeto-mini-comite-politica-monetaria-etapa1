@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Dict
 
 import pandas as pd
-from config import CAPITAL_INICIAL, ALIQUOTA_IR, DIAS_UTEIS_POR_ANO
+from config import CAPITAL_INICIAL, DIAS_UTEIS_POR_ANO
 
 from scenarios import (
     scenario_manutencao,
@@ -140,7 +140,7 @@ def _simulate_for_scenario(df: pd.DataFrame, params: SimulationParams) -> pd.Dat
 
 def run_all(initial_value: float = CAPITAL_INICIAL) -> Dict[str, pd.DataFrame]:
     """Roda todos os cenários com parâmetros padrão e retorna resumos por cenário."""
-    params = SimulationParams(initial=initial_value, annual_custody=0.002, ir_rate=ALIQUOTA_IR, periods_per_year=12)
+    params = SimulationParams(initial=initial_value, annual_custody=0.002, periods_per_year=12)
 
     scen1 = scenario_manutencao()
     scen2 = scenario_aperto()
@@ -154,7 +154,7 @@ def run_all(initial_value: float = CAPITAL_INICIAL) -> Dict[str, pd.DataFrame]:
 
 def run_all_with_timelines(initial_value: float = CAPITAL_INICIAL) -> Dict[str, Dict]:
     """Roda todos os cenários configurados e retorna resumos + timelines completas por cenário."""
-    params = SimulationParams(initial=initial_value, annual_custody=0.002, ir_rate=ALIQUOTA_IR, periods_per_year=DIAS_UTEIS_POR_ANO)
+    params = SimulationParams(initial=initial_value, annual_custody=0.002, periods_per_year=DIAS_UTEIS_POR_ANO)
 
     # Usa todos os cenários configurados dinamicamente
     all_scenarios = get_all_scenarios_daily()
