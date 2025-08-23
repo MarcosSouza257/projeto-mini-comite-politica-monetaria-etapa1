@@ -2,8 +2,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 import pandas as pd
-from rates import annual_to_monthly, equivalent_periodic_fee, compose_ipca_plus
-from config import TR_MENSAL_FIXA, MESES_SIMULACAO, DIAS_UTEIS_POR_ANO
+from rates import annual_to_monthly, annual_to_daily, monthly_to_annual, daily_to_annual, equivalent_periodic_fee, compose_ipca_plus
+from config import TR_MENSAL_FIXA, DIAS_UTEIS_POR_ANO
 
 
 @dataclass(frozen=True)
@@ -72,24 +72,32 @@ def simulate_product(
 
 def simulate_tesouro_prefixado(meses: int, params: SimulationParams, taxa_anual: float = 0.14) -> dict:
     """Tesouro Prefixado: taxa fixa de 14% a.a."""
-    if params.periods_per_year == 252:  # Simulação diária
-        rate = (1.0 + taxa_anual) ** (1.0 / 252.0) - 1.0
-    else:  # Simulação mensal
-        rate = annual_to_monthly(taxa_anual)
+    # Determina função de conversão baseada na frequência da simulação
+    convert_rate = annual_to_daily if params.periods_per_year == DIAS_UTEIS_POR_ANO else annual_to_monthly
     
+    # Converte taxa anual para o período da simulação e replica para todos os períodos
+    rate = convert_rate(taxa_anual)
     rates = [rate] * meses
+    
     return simulate_product(rates, params, "Tesouro Prefixado", apply_custody=True, ir_exempt=False)
 
 
 def simulate_tesouro_ipca_plus(ipca_mensal: Iterable[float], params: SimulationParams, juro_real_anual: float = 0.07) -> dict:
     """Tesouro IPCA+: IPCA + 7% a.a. real."""
-    i_real_m = annual_to_monthly(juro_real_anual)
-    rates = []
+    # Determina função de conversão baseada na frequência da simulação
+    if params.periods_per_year == DIAS_UTEIS_POR_ANO:
+        convert_rate = annual_to_daily
+    else:
+        convert_rate = annual_to_monthly
     
-    for ipca_anual in ipca_mensal:
-        ipca_m = annual_to_monthly(ipca_anual)
-        taxa_composta = compose_ipca_plus(ipca_m, i_real_m)
-        rates.append(taxa_composta)
+    # Converte juro real anual para o período da simulação
+    i_real_periodo = convert_rate(juro_real_anual)
+    
+    # Calcula taxas compostas para cada período
+    rates = [
+        compose_ipca_plus(convert_rate(ipca_anual), i_real_periodo) 
+        for ipca_anual in ipca_mensal
+    ]
     
     return simulate_product(rates, params, "Tesouro IPCA+", apply_custody=True, ir_exempt=False)
 
@@ -105,8 +113,23 @@ def simulate_cdb_cdi(cdi_mensal: Iterable[float], params: SimulationParams) -> d
 
 
 def simulate_lci(selic_mensal: Iterable[float], params: SimulationParams, fator: float = 0.90) -> dict:
-    """LCI: 90% da Selic, isenta de IR."""
-    rates = [fator * x for x in selic_mensal]
+    """LCI: 90% da Selic, isenta de IR.
+    
+    Implementa corretamente: Se Selic = 15% a.a., então LCI = 13,5% a.a.
+    Converte a taxa anual equivalente e depois para o período da simulação.
+    """
+    # Determina funções de conversão baseada na frequência da simulação
+    if params.periods_per_year == DIAS_UTEIS_POR_ANO:
+        to_annual, from_annual = daily_to_annual, annual_to_daily
+    else:
+        to_annual, from_annual = monthly_to_annual, annual_to_monthly
+    
+    # Calcula taxas LCI para cada período
+    rates = [
+        from_annual(fator * to_annual(selic_periodo))
+        for selic_periodo in selic_mensal
+    ]
+    
     return simulate_product(rates, params, "LCI", apply_custody=True, ir_exempt=True)
 
 def get_poupanca_base_rate(selic_aa: float) -> float:
@@ -122,32 +145,27 @@ def simulate_poupanca(selic_anual: Iterable[float], params: SimulationParams) ->
     - Selic ≤ 8,5% a.a. → 70% da Selic a.a. (convertido a.m.) + TR
     Obs: Capitalização é mensal (data de aniversário).
     """
-    tr_m = TR_MENSAL_FIXA
     selic_list = list(selic_anual)
-    rates = []
-
-    if params.periods_per_year == DIAS_UTEIS_POR_ANO: 
+    
+    if params.periods_per_year == DIAS_UTEIS_POR_ANO:
+        # Simulação diária: capitalização apenas no aniversário (último dia do mês)
+        rates = []
         dias_por_mes = 21
+        
         for mes in range(len(selic_list) // dias_por_mes):
             idx_dia = mes * dias_por_mes
             s_aa = selic_list[idx_dia]
-
-            # Taxa mensal da poupança
-            taxa_mensal = get_poupanca_base_rate(s_aa) + tr_m
-
-            # Durante o mês não há rendimento (dias sem aniversário)
-            rates.extend([0.0] * (dias_por_mes - 1))
-
-            # No aniversário (último dia do mês), aplica a taxa mensal
-            rates.append(taxa_mensal)
-
-        # Ajuste se houver sobra de dias no final
-        if len(rates) < len(selic_list):
-            rates.extend([0.0] * (len(selic_list) - len(rates)))
-        rates = rates[:len(selic_list)]
-
-    else:  # Simulação mensal (36 meses, por ex.)
-        for s_aa in selic_list:
-            rates.append(get_poupanca_base_rate(s_aa) + tr_m)
+            
+            # Taxa mensal da poupança (base + TR)
+            taxa_mensal = get_poupanca_base_rate(s_aa) + TR_MENSAL_FIXA
+            
+            # 20 dias sem rendimento + 1 dia com taxa mensal
+            rates.extend([0.0] * (dias_por_mes - 1) + [taxa_mensal])
+        
+        # Ajusta para o tamanho exato da lista
+        rates = (rates + [0.0] * len(selic_list))[:len(selic_list)]
+    else:
+        # Simulação mensal: aplica taxa mensal diretamente
+        rates = [get_poupanca_base_rate(s_aa) + TR_MENSAL_FIXA for s_aa in selic_list]
     
     return simulate_product(rates, params, "Poupanca", apply_custody=False, ir_exempt=True)

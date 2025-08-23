@@ -30,13 +30,14 @@ def _simulate_for_scenario_daily(df: pd.DataFrame, params: SimulationParams) -> 
     # Séries necessárias (agora diárias)
     selic_d = df["selic_d"].tolist()
     ipca_d = df["ipca_d"].tolist()
+    ipca_aa = df["ipca_aa"].tolist()  # IPCA anual para Tesouro IPCA+
     selic_aa = df["selic_aa"].tolist()
 
     results = []
 
     # Simula todos os produtos (agora com 756 dias úteis)
     r_prefix = simulate_tesouro_prefixado(meses=len(df), params=params)  # taxa fixa 14% a.a.
-    r_ipca = simulate_tesouro_ipca_plus(ipca_mensal=ipca_d, params=params)  # usa IPCA diário
+    r_ipca = simulate_tesouro_ipca_plus(ipca_mensal=ipca_aa, params=params)  # usa IPCA anual
     r_selic = simulate_tesouro_selic(selic_mensal=selic_d, params=params)   # usa Selic diário
     r_cdb = simulate_cdb_cdi(cdi_mensal=selic_d, params=params)             # usa Selic diário
     r_lci = simulate_lci(selic_mensal=selic_d, params=params)               # usa Selic diário
