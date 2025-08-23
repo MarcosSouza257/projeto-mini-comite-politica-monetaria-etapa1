@@ -39,7 +39,7 @@ def _simulate_for_scenario_daily(df: pd.DataFrame, params: SimulationParams) -> 
     r_prefix = simulate_tesouro_prefixado(meses=len(df), params=params)  # taxa fixa 14% a.a.
     r_ipca = simulate_tesouro_ipca_plus(ipca_mensal=ipca_aa, params=params)  # usa IPCA anual
     r_selic = simulate_tesouro_selic(selic_mensal=selic_d, params=params)   # usa Selic diário
-    r_cdb = simulate_cdb_cdi(cdi_mensal=selic_d, params=params)             # usa Selic diário
+    r_cdb = simulate_cdb_cdi(selic_rates=selic_d, params=params)            # CDI ≈ Selic - 0,1 p.p.
     r_lci = simulate_lci(selic_mensal=selic_d, params=params)               # usa Selic diário
     r_poup = simulate_poupanca(selic_anual=selic_aa, params=params)
 
@@ -110,7 +110,7 @@ def _simulate_for_scenario(df: pd.DataFrame, params: SimulationParams) -> pd.Dat
         "vf_liquido": r_selic["vf_liquido"],
     })
 
-    r_cdb = simulate_cdb_cdi(cdi_mensal=selic_m, params=params)
+    r_cdb = simulate_cdb_cdi(selic_rates=selic_m, params=params)
     results.append({
         "produto": r_cdb["produto"],
         "vf_bruto": r_cdb["vf_bruto"],

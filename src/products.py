@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Iterable
 import pandas as pd
 from rates import annual_to_monthly, annual_to_daily, monthly_to_annual, daily_to_annual, equivalent_periodic_fee, compose_ipca_plus
-from config import TR_MENSAL_FIXA, DIAS_UTEIS_POR_ANO
+from config import TR_MENSAL_FIXA, DIAS_UTEIS_POR_ANO, SPREAD_CDI_SELIC
 
 
 @dataclass(frozen=True)
@@ -107,9 +107,34 @@ def simulate_tesouro_selic(selic_mensal: Iterable[float], params: SimulationPara
     return simulate_product(list(selic_mensal), params, "Tesouro Selic", apply_custody=True, ir_exempt=False)
 
 
-def simulate_cdb_cdi(cdi_mensal: Iterable[float], params: SimulationParams) -> dict:
-    """CDB 100% CDI: assume CDI ≈ Selic."""
-    return simulate_product(list(cdi_mensal), params, "CDB 100% CDI", apply_custody=True, ir_exempt=False)
+def calculate_cdi_from_selic(selic_rates: Iterable[float], params: SimulationParams) -> list[float]:
+    """Calcula taxas CDI baseadas na Selic com spread realista.
+    
+    CDI geralmente fica 0,1 p.p. abaixo da Selic (conforme B3).
+    Exemplo: Se Selic = 15% a.a. → CDI ≈ 14,9% a.a.
+    """
+    # Determina funções de conversão baseada na frequência da simulação
+    if params.periods_per_year == DIAS_UTEIS_POR_ANO:
+        to_annual, from_annual = daily_to_annual, annual_to_daily
+    else:
+        to_annual, from_annual = monthly_to_annual, annual_to_monthly
+    
+    # Calcula CDI para cada período
+    cdi_rates = []
+    for selic_periodo in selic_rates:
+        # Converte para anual, aplica spread, converte de volta
+        selic_anual = to_annual(selic_periodo)
+        cdi_anual = selic_anual + SPREAD_CDI_SELIC  # -0,1 p.p.
+        cdi_periodo = from_annual(cdi_anual)
+        cdi_rates.append(cdi_periodo)
+    
+    return cdi_rates
+
+
+def simulate_cdb_cdi(selic_rates: Iterable[float], params: SimulationParams) -> dict:
+    """CDB 100% CDI: CDI fica ~0,1 p.p. abaixo da Selic (conforme B3)."""
+    cdi_rates = calculate_cdi_from_selic(selic_rates, params)
+    return simulate_product(cdi_rates, params, "CDB 100% CDI", apply_custody=True, ir_exempt=False)
 
 
 def simulate_lci(selic_mensal: Iterable[float], params: SimulationParams, fator: float = 0.90) -> dict:

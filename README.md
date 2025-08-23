@@ -40,7 +40,7 @@ Este projeto visa demonstrar a relação entre a Taxa Selic, matemática finance
 - **Tesouro Selic 2028:** Rende a Selic efetiva diária.
 - **Tesouro Prefixado 2028:** Rende 14% a.a. (taxa fixa), independente de cenário.
 - **Tesouro IPCA+ 2028:** Rende IPCA + 7% a.a. (juros reais fixos de 7% a.a.).
-- **CDB 100% do CDI:** Rende 100% da taxa DI; DI ≈ Selic Meta.
+- **CDB 100% do CDI:** Rende 100% da taxa DI; CDI fica ~0,1 p.p. abaixo da Selic (conforme B3).
 - **LCI:** Rende 90% da Selic Meta (isenta de IR, porém aplica custódia 0,2% a.a. conforme escopo).
 - **Poupança:**
   - Se Selic Meta > 8,5% a.a.: 0,5% a.m.
@@ -75,7 +75,7 @@ Use capitalização composta e equivalência de taxas.
 - **Tesouro Selic:** Capitalização diária útil. Use `i_d_selic` a cada dia útil do período.
 - **Prefixado 14% a.a.:** Use taxa mensal equivalente `i_m_fix` para 36 períodos mensais.
 - **IPCA+ 7% a.a.:** Para cada mês, converta IPCA anual do cenário em taxa mensal `ipca_m`, converta 7% a.a. em `i_m_real`, componha `i_m_nominal = (1+ipca_m)*(1+i_m_real)-1`.
-- **CDB 100% CDI:** Igual à Selic Meta do cenário (mensal ou diária, conforme granularidade usada), com IR e custódia.
+- **CDB 100% CDI:** CDI fica 0,1 p.p. abaixo da Selic (conforme B3), com IR e custódia.
 - **LCI 90% Selic:** 90% da Selic Meta (isenta de IR, com custódia).
 - **Poupança:** Aplicar regra conforme nível da Selic e capitalizar mensalmente.
 

@@ -15,6 +15,9 @@ TAXA_CUSTODIA_ANUAL = 0.002  # 0,2% a.a.
 ALIQUOTA_IR = 0.15          # 15% para investimentos (ajustado automaticamente por prazo)
 TR_MENSAL_FIXA = 0.0017     # 0,17% a.m. para poupança
 
+# Parâmetros de mercado
+SPREAD_CDI_SELIC = -0.001   # CDI fica 0,1 p.p. abaixo da Selic (conforme B3)
+
 # Parâmetros calculados automaticamente
 MESES_SIMULACAO = ANOS_SIMULACAO * MESES_POR_ANO        # 36 meses para 3 anos
 DIAS_UTEIS_SIMULACAO = ANOS_SIMULACAO * DIAS_UTEIS_POR_ANO  # 756 dias úteis para 3 anos
