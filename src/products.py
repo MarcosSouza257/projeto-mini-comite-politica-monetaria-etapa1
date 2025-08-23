@@ -55,7 +55,6 @@ def simulate_product(
             "taxa": rate,
             "saldo_bruto": saldo_sem_custodia,
             "custodia": custodia_periodo,
-            "saldo_pos_custodia": saldo_com_custodia,
             "provisao_ir": provisao_ir,
             "saldo_liquido_estimado": saldo_com_custodia - provisao_ir,
         })

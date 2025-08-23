@@ -193,7 +193,7 @@ CENARIOS["crise"] = CenarioEconomico(
 
 ### Loop de simulação em `simulate.py`
 - Recebe: série de taxas por período (por cenário e produto), valor inicial, parâmetros de custos/IR.
-- Retorna: série temporal com `saldo_bruto`, `custodia`, `saldo_pos_custodia`, e no fim `vf_bruto`, `ir_final`, `vf_liquido`.
+- Retorna: série temporal com `saldo_bruto`, `custodia`, `provisao_ir`, `saldo_liquido_estimado`, e no fim `vf_bruto`, `ir_final`, `vf_liquido`.
 - Pode salvar .xlsx em `data/` e gráficos em `figures/`.
 
 ### Como executar

@@ -64,8 +64,9 @@ def main() -> None:
                     if produto in data["timelines"]:
                         timeline_df = data["timelines"][produto].copy()
                         timeline_df.insert(0, "CENARIO", scen_name)
-                        # Substitui 'TIPO' por datas começando em 2025
-                        timeline_df.insert(0, "DATA", pd.date_range(start="2025-01-01", periods=len(timeline_df), freq='B'))
+                        # Substitui 'TIPO' por datas começando em 2025 (apenas data, sem hora)
+                        dates = pd.date_range(start="2025-01-01", periods=len(timeline_df), freq='B').date
+                        timeline_df.insert(0, "DATA", dates)
                         all_data.append(timeline_df)
                         
                         # Adiciona linha separadora entre cenários
