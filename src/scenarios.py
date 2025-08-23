@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
 import pandas as pd
-from config import CENARIOS, CenarioEconomico
+from config import CENARIOS, CenarioEconomico, ANOS_SIMULACAO, MESES_SIMULACAO, DIAS_UTEIS_SIMULACAO, DIAS_UTEIS_POR_ANO
 
 
 # ------------------------------
@@ -26,32 +26,32 @@ def annual_to_daily(annual_rate: float, business_days_per_year: int = 252) -> fl
 @dataclass(frozen=True)
 class ScenarioDefinition:
     name: str
-    selic_by_year: List[float]  # tamanho 3: anos Y0, Y1, Y2
-    ipca_by_year: List[float]   # tamanho 3: anos Y0, Y1, Y2
+    selic_by_year: List[float]  # tamanho ANOS_SIMULACAO
+    ipca_by_year: List[float]   # tamanho ANOS_SIMULACAO
     start_year: int = 2025
 
 
 def _expand_annual_sequence_to_months(
-    annual_sequence: List[float], months: int = 36
+    annual_sequence: List[float], months: int = MESES_SIMULACAO
 ) -> List[float]:
-    """Repete cada taxa anual para seus 12 meses correspondentes, por 3 anos.
+    """Repete cada taxa anual para seus 12 meses correspondentes.
 
-    annual_sequence deve ter tamanho 3.
+    annual_sequence deve ter tamanho ANOS_SIMULACAO.
     """
-    if len(annual_sequence) != 3:
-        raise ValueError("annual_sequence deve conter exatamente 3 taxas anuais (anos 1..3)")
-    per_year_months = months // 3
+    if len(annual_sequence) != ANOS_SIMULACAO:
+        raise ValueError(f"annual_sequence deve conter exatamente {ANOS_SIMULACAO} taxas anuais")
+    per_year_months = months // ANOS_SIMULACAO
     expanded: List[float] = []
     for annual in annual_sequence:
         expanded.extend([annual] * per_year_months)
-    # Se months não for múltiplo de 3*12, ajusta/trunca (não esperado para 36)
+    # Se months não for múltiplo de ANOS_SIMULACAO*12, ajusta/trunca
     return expanded[:months]
 
 
 def build_scenario_dataframe(
     definition: ScenarioDefinition,
-    months: int = 36,
-    business_days_per_year: int = 252,
+    months: int = MESES_SIMULACAO,
+    business_days_per_year: int = DIAS_UTEIS_POR_ANO,
     include_daily_columns: bool = False,
 ) -> pd.DataFrame:
     """Constroi um DataFrame mensal para o cenário informado.
@@ -71,7 +71,7 @@ def build_scenario_dataframe(
     month_index = list(range(1, months + 1))
     years: List[int] = []
     for i in month_index:
-        # Meses 1..12 -> Y0, 13..24 -> Y1, 25..36 -> Y2
+        # Distribui os meses pelos anos de simulação
         year_offset = (i - 1) // 12
         years.append(definition.start_year + year_offset)
 
@@ -98,18 +98,18 @@ def build_scenario_dataframe(
 
 def build_scenario_dataframe_daily(
     definition: ScenarioDefinition,
-    business_days_per_year: int = 252,
+    business_days_per_year: int = DIAS_UTEIS_POR_ANO,
 ) -> pd.DataFrame:
-    """Constroi um DataFrame diário para o cenário informado (3 anos = 756 dias úteis).
+    """Constroi um DataFrame diário para o cenário informado.
 
     Colunas:
     - scenario: nome do cenário
-    - day_index: 1..756 (dias úteis)
-    - year: start_year, start_year+1, start_year+2 (repetido a cada 252 dias úteis)
+    - day_index: 1..DIAS_UTEIS_SIMULACAO (dias úteis)
+    - year: anos de simulação (repetido a cada business_days_per_year dias úteis)
     - selic_aa, ipca_aa: taxas anuais daquele dia (valores anuais expandidos)
     - selic_d, ipca_d: taxas efetivas diárias (dias úteis)
     """
-    total_days = 3 * business_days_per_year  # 756 dias úteis
+    total_days = DIAS_UTEIS_SIMULACAO
     
     # Expande taxas anuais para dias úteis
     selic_aa_daily = []
@@ -122,7 +122,7 @@ def build_scenario_dataframe_daily(
     day_index = list(range(1, total_days + 1))
     years = []
     for i in day_index:
-        # Days 1..252 -> Y0, 253..504 -> Y1, 505..756 -> Y2
+        # Distribui os dias pelos anos de simulação
         year_offset = (i - 1) // business_days_per_year
         years.append(definition.start_year + year_offset)
 

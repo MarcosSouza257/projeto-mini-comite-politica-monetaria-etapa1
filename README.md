@@ -103,12 +103,17 @@ README.md
 ### Configurações centralizadas (`src/config.py`)
 Para alterar facilmente os parâmetros do projeto, edite o arquivo `src/config.py`:
 
-#### Parâmetros Financeiros:
-- **CAPITAL_INICIAL:** `100000.0` (R$ 100.000,00) ← **Altere aqui para mudar o valor em todo o projeto**
-- **TAXA_CUSTODIA_ANUAL:** `0.002` (0,2% a.a.)
-- **ALIQUOTA_IR_3_ANOS:** `0.15` (15% para 3 anos)
+#### Parâmetros da Simulação:
+- **CAPITAL_INICIAL:** `100000.0` (R$ 100.000,00) ← **Altere aqui para mudar o valor**
+- **ANOS_SIMULACAO:** `3` ← **Altere aqui para mudar o período (1, 2, 3, 5 anos, etc.)**
 - **DIAS_UTEIS_POR_ANO:** `252` (padrão do mercado brasileiro)
+- **TAXA_CUSTODIA_ANUAL:** `0.002` (0,2% a.a.)
+- **ALIQUOTA_IR:** `0.15` (15% - ajustada automaticamente por prazo)
 - **TR_MENSAL_FIXA:** `0.0017` (0,17% a.m. para poupança)
+
+**Parâmetros calculados automaticamente:**
+- **MESES_SIMULACAO:** `ANOS_SIMULACAO * 12` (36 meses para 3 anos)
+- **DIAS_UTEIS_SIMULACAO:** `ANOS_SIMULACAO * 252` (756 dias úteis para 3 anos)
 
 #### Cenários Econômicos:
 Os cenários estão definidos no dicionário `CENARIOS` e são **automaticamente incluídos** nas simulações:
@@ -126,19 +131,27 @@ CENARIOS = {
 1. Adicione uma nova entrada ao dicionário `CENARIOS`
 2. Execute `python main.py` - o novo cenário será incluído automaticamente!
 
-**Exemplo - Cenário de Crise:**
+**Exemplo - Cenário de Crise (flexível para qualquer número de anos):**
 ```python
 CENARIOS["crise"] = CenarioEconomico(
     nome="Cenario 5 - Crise",
     descricao="Cenário de crise: Selic alta, IPCA descontrolado",
-    selic_ano1=0.15,   # 15% em 2025
-    selic_ano2=0.25,   # 25% em 2026 (choque de juros)
-    selic_ano3=0.30,   # 30% em 2027 (emergencial)
-    ipca_ano1=0.045,   # 4,5% em 2025
-    ipca_ano2=0.12,    # 12% em 2026 (descontrole)
-    ipca_ano3=0.18,    # 18% em 2027 (hiperinflação)
+    selic_por_ano=[0.15, 0.25, 0.30, 0.35, 0.40][:ANOS_SIMULACAO],  # Ajusta automaticamente
+    ipca_por_ano=[0.045, 0.12, 0.18, 0.25, 0.30][:ANOS_SIMULACAO],  # Ajusta automaticamente
 )
 ```
+
+**Para simular períodos diferentes:**
+1. Edite `src/config.py` e altere `ANOS_SIMULACAO = 3` para o valor desejado
+2. Execute `python main.py` normalmente
+
+**Exemplos:**
+- **1 ano:** `ANOS_SIMULACAO = 1` → 252 dias úteis
+- **2 anos:** `ANOS_SIMULACAO = 2` → 504 dias úteis  
+- **5 anos:** `ANOS_SIMULACAO = 5` → 1.260 dias úteis
+- **10 anos:** `ANOS_SIMULACAO = 10` → 2.520 dias úteis
+
+**⚠️ Importante:** Os cenários devem ter taxas suficientes para o número de anos escolhido. Use listas com `[:ANOS_SIMULACAO]` para ajuste automático.
 
 ### Definição dos cenários em `scenarios.py`
 - Função que retorna um DataFrame por cenário com colunas: `ano`, `selic_aa`, `ipca_aa`.
