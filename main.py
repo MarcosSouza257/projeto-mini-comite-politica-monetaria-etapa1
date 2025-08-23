@@ -75,7 +75,18 @@ def main() -> None:
                 if all_data:
                     combined_data = pd.concat(all_data, ignore_index=True)
                     combined_data.to_excel(writer, sheet_name=sheet_name, index=False)
-        
+            
+            # Adiciona aba de resumo com todos os cenários
+            summary_data = []
+            for scen_name, data in results.items():
+                summary_df = data["summary"].copy()
+                summary_df.insert(0, "CENARIO", scen_name)
+                summary_data.append(summary_df)
+            
+            if summary_data:
+                combined_summary = pd.concat(summary_data, ignore_index=True)
+                combined_summary.to_excel(writer, sheet_name="Resumo", index=False)
+
         # print(f"\nPlanilha por título salva em: {os.path.abspath(excel_path)}")
         # print("Estrutura: 6 abas (uma por produto) com 3 cenários simulados em cada aba")
         # print("Cada aba contém: resumos dos 3 cenários + timelines diárias de 756 dias úteis")
