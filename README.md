@@ -102,13 +102,43 @@ README.md
 
 ### Configurações centralizadas (`src/config.py`)
 Para alterar facilmente os parâmetros do projeto, edite o arquivo `src/config.py`:
+
+#### Parâmetros Financeiros:
 - **CAPITAL_INICIAL:** `100000.0` (R$ 100.000,00) ← **Altere aqui para mudar o valor em todo o projeto**
 - **TAXA_CUSTODIA_ANUAL:** `0.002` (0,2% a.a.)
 - **ALIQUOTA_IR_3_ANOS:** `0.15` (15% para 3 anos)
 - **DIAS_UTEIS_POR_ANO:** `252` (padrão do mercado brasileiro)
 - **TR_MENSAL_FIXA:** `0.0017` (0,17% a.m. para poupança)
 
-**Exemplo:** Para simular com R$ 50.000,00, altere `CAPITAL_INICIAL = 50000.0` no arquivo `src/config.py`.
+#### Cenários Econômicos:
+Os cenários estão definidos no dicionário `CENARIOS` e são **automaticamente incluídos** nas simulações:
+
+```python
+CENARIOS = {
+    "manutencao": CenarioEconomico(...),    # Cenário 1 - Manutenção
+    "aperto": CenarioEconomico(...),        # Cenário 2 - Aperto Monetário  
+    "afrouxamento": CenarioEconomico(...),  # Cenário 3 - Afrouxamento
+    "recessao": CenarioEconomico(...),      # Cenário 4 - Recessão (exemplo)
+}
+```
+
+**Para criar um novo cenário:**
+1. Adicione uma nova entrada ao dicionário `CENARIOS`
+2. Execute `python main.py` - o novo cenário será incluído automaticamente!
+
+**Exemplo - Cenário de Crise:**
+```python
+CENARIOS["crise"] = CenarioEconomico(
+    nome="Cenario 5 - Crise",
+    descricao="Cenário de crise: Selic alta, IPCA descontrolado",
+    selic_ano1=0.15,   # 15% em 2025
+    selic_ano2=0.25,   # 25% em 2026 (choque de juros)
+    selic_ano3=0.30,   # 30% em 2027 (emergencial)
+    ipca_ano1=0.045,   # 4,5% em 2025
+    ipca_ano2=0.12,    # 12% em 2026 (descontrole)
+    ipca_ano3=0.18,    # 18% em 2027 (hiperinflação)
+)
+```
 
 ### Definição dos cenários em `scenarios.py`
 - Função que retorna um DataFrame por cenário com colunas: `ano`, `selic_aa`, `ipca_aa`.
@@ -144,6 +174,7 @@ Para alterar facilmente os parâmetros do projeto, edite o arquivo `src/config.p
 ```
 pip install -r requirements.txt
 ```
+
 - **Execute as simulações (valor inicial padrão R$ 100.000,00):**
 ```
 python main.py
@@ -155,5 +186,5 @@ python main.py --initial 100000 \
                --save-figures --fig-dir figures
 ```
 **Saídas:**
-- `data/resumo_todos_os_cenarios.xlsx` combinado
+- `data/simulacao_por_titulo.xlsx` com aba por produto + aba resumo
 - `figures/*_summary.png` com VF líquido por produto

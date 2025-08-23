@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
 import pandas as pd
+from config import CENARIOS, CenarioEconomico
 
 
 # ------------------------------
@@ -143,82 +144,91 @@ def build_scenario_dataframe_daily(
 
 
 # ------------------------------
-# Cenários pré-definidos
+# Funções para construir cenários a partir da configuração
 # ------------------------------
-def scenario_manutencao(include_daily_columns: bool = False) -> pd.DataFrame:
-    """Cenário 1 (Manutenção): Selic 15% a.a. nos 3 anos; IPCA 4,5% a.a. nos 3 anos."""
+
+def build_scenario_from_config(cenario_key: str, include_daily_columns: bool = False) -> pd.DataFrame:
+    """Constrói um cenário a partir da configuração centralizada."""
+    if cenario_key not in CENARIOS:
+        raise ValueError(f"Cenário '{cenario_key}' não encontrado. Disponíveis: {list(CENARIOS.keys())}")
+    
+    cenario = CENARIOS[cenario_key]
     definition = ScenarioDefinition(
-        name="Cenario 1 - Manutencao",
-        selic_by_year=[0.15, 0.15, 0.15],
-        ipca_by_year=[0.045, 0.045, 0.045],
+        name=cenario.nome,
+        selic_by_year=cenario.selic_por_ano,
+        ipca_by_year=cenario.ipca_por_ano,
     )
     return build_scenario_dataframe(definition, include_daily_columns=include_daily_columns)
+
+
+def build_scenario_daily_from_config(cenario_key: str) -> pd.DataFrame:
+    """Constrói um cenário diário a partir da configuração centralizada."""
+    if cenario_key not in CENARIOS:
+        raise ValueError(f"Cenário '{cenario_key}' não encontrado. Disponíveis: {list(CENARIOS.keys())}")
+    
+    cenario = CENARIOS[cenario_key]
+    definition = ScenarioDefinition(
+        name=cenario.nome,
+        selic_by_year=cenario.selic_por_ano,
+        ipca_by_year=cenario.ipca_por_ano,
+    )
+    return build_scenario_dataframe_daily(definition)
+
+
+# ------------------------------
+# Cenários pré-definidos (mantidos para compatibilidade)
+# ------------------------------
+def scenario_manutencao(include_daily_columns: bool = False) -> pd.DataFrame:
+    """Cenário 1 (Manutenção): usa configuração centralizada."""
+    return build_scenario_from_config("manutencao", include_daily_columns)
 
 
 def scenario_manutencao_daily() -> pd.DataFrame:
-    """Cenário 1 (Manutenção): versão diária com 756 dias úteis."""
-    definition = ScenarioDefinition(
-        name="Cenario 1 - Manutencao",
-        selic_by_year=[0.15, 0.15, 0.15],
-        ipca_by_year=[0.045, 0.045, 0.045],
-    )
-    return build_scenario_dataframe_daily(definition)
+    """Cenário 1 (Manutenção): versão diária usando configuração centralizada."""
+    return build_scenario_daily_from_config("manutencao")
 
 
 def scenario_aperto(include_daily_columns: bool = False) -> pd.DataFrame:
-    """Cenário 2 (Aperto Monetário):
-    - Selic: 15% (2025), 16,5% (2026), 17% (2027)
-    - IPCA: 4,5% (2025), 5,0% (2026), 5,5% (2027)
-    """
-    definition = ScenarioDefinition(
-        name="Cenario 2 - Aperto",
-        selic_by_year=[0.15, 0.165, 0.17],
-        ipca_by_year=[0.045, 0.05, 0.055],
-    )
-    return build_scenario_dataframe(definition, include_daily_columns=include_daily_columns)
+    """Cenário 2 (Aperto Monetário): usa configuração centralizada."""
+    return build_scenario_from_config("aperto", include_daily_columns)
 
 
 def scenario_aperto_daily() -> pd.DataFrame:
-    """Cenário 2 (Aperto): versão diária com 756 dias úteis."""
-    definition = ScenarioDefinition(
-        name="Cenario 2 - Aperto",
-        selic_by_year=[0.15, 0.165, 0.17],
-        ipca_by_year=[0.045, 0.05, 0.055],
-    )
-    return build_scenario_dataframe_daily(definition)
+    """Cenário 2 (Aperto): versão diária usando configuração centralizada."""
+    return build_scenario_daily_from_config("aperto")
 
 
 def scenario_afrouxamento(include_daily_columns: bool = False) -> pd.DataFrame:
-    """Cenário 3 (Afrouxamento Monetário):
-    - Selic: 15% (2025), 13% (2026), 11% (2027)
-    - IPCA: 4% a.a. nos 3 anos
-    """
-    definition = ScenarioDefinition(
-        name="Cenario 3 - Afrouxamento",
-        selic_by_year=[0.15, 0.13, 0.11],
-        ipca_by_year=[0.04, 0.04, 0.04],
-    )
-    return build_scenario_dataframe(definition, include_daily_columns=include_daily_columns)
+    """Cenário 3 (Afrouxamento Monetário): usa configuração centralizada."""
+    return build_scenario_from_config("afrouxamento", include_daily_columns)
 
 
 def scenario_afrouxamento_daily() -> pd.DataFrame:
-    """Cenário 3 (Afrouxamento): versão diária com 756 dias úteis."""
-    definition = ScenarioDefinition(
-        name="Cenario 3 - Afrouxamento",
-        selic_by_year=[0.15, 0.13, 0.11],
-        ipca_by_year=[0.04, 0.04, 0.04],
-    )
-    return build_scenario_dataframe_daily(definition)
+    """Cenário 3 (Afrouxamento): versão diária usando configuração centralizada."""
+    return build_scenario_daily_from_config("afrouxamento")
 
 
 def get_all_scenarios(include_daily_columns: bool = False) -> Dict[str, pd.DataFrame]:
-    """Retorna todos os cenários pré-definidos como dict: nome -> DataFrame."""
-    dfs = [
-        scenario_manutencao(include_daily_columns=include_daily_columns),
-        scenario_aperto(include_daily_columns=include_daily_columns),
-        scenario_afrouxamento(include_daily_columns=include_daily_columns),
-    ]
-    return {df["scenario"].iloc[0]: df for df in dfs}
+    """Retorna todos os cenários configurados como dict: nome -> DataFrame."""
+    scenarios = {}
+    for key in CENARIOS.keys():
+        df = build_scenario_from_config(key, include_daily_columns)
+        scenarios[df["scenario"].iloc[0]] = df
+    return scenarios
+
+
+def get_all_scenarios_daily() -> Dict[str, pd.DataFrame]:
+    """Retorna todos os cenários configurados em versão diária."""
+    scenarios = {}
+    for key in CENARIOS.keys():
+        df = build_scenario_daily_from_config(key)
+        scenarios[df["scenario"].iloc[0]] = df
+    return scenarios
+
+
+def list_available_scenarios() -> Dict[str, str]:
+    """Lista todos os cenários disponíveis com suas descrições."""
+    return {key: cenario.descricao for key, cenario in CENARIOS.items()}
 
 
 __all__ = [
@@ -227,13 +237,19 @@ __all__ = [
     "annual_to_daily",
     "build_scenario_dataframe",
     "build_scenario_dataframe_daily",
+    # Funções que usam configuração centralizada
+    "build_scenario_from_config",
+    "build_scenario_daily_from_config",
+    "get_all_scenarios",
+    "get_all_scenarios_daily",
+    "list_available_scenarios",
+    # Funções de compatibilidade (cenários específicos)
     "scenario_manutencao",
     "scenario_manutencao_daily",
     "scenario_aperto",
     "scenario_aperto_daily",
     "scenario_afrouxamento",
     "scenario_afrouxamento_daily",
-    "get_all_scenarios",
 ]
 
 
