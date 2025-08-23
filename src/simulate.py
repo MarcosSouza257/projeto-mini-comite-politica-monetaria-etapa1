@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Dict
 
 import pandas as pd
+from config import CAPITAL_INICIAL
 
 from scenarios import (
     scenario_manutencao,
@@ -84,7 +85,7 @@ def _simulate_for_scenario(df: pd.DataFrame, params: SimulationParams) -> pd.Dat
     return df_summary
 
 
-def run_all(initial_value: float = 100_000.00) -> Dict[str, pd.DataFrame]:
+def run_all(initial_value: float = CAPITAL_INICIAL) -> Dict[str, pd.DataFrame]:
     """Roda os três cenários com parâmetros padrão e retorna resumos por cenário."""
     params = SimulationParams(initial=initial_value, annual_custody=0.002, ir_rate=0.15, periods_per_year=12)
 
@@ -98,7 +99,7 @@ def run_all(initial_value: float = 100_000.00) -> Dict[str, pd.DataFrame]:
         scen3["scenario"].iloc[0]: _simulate_for_scenario(scen3, params),
     }
 
-def run_all_with_timelines(initial_value: float = 100_000.00) -> Dict[str, Dict]:
+def run_all_with_timelines(initial_value: float = CAPITAL_INICIAL) -> Dict[str, Dict]:
     """Roda os três cenários e retorna resumos + timelines completas por cenário."""
     params = SimulationParams(initial=initial_value, annual_custody=0.002, ir_rate=0.15, periods_per_year=252)
 

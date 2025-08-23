@@ -85,9 +85,10 @@ Use capitalização composta e equivalência de taxas.
 
 ### Estrutura do projeto
 ```
-data/                 # saídas CSV (geradas opcionalmente)
+data/                 # saídas Excel (geradas opcionalmente)
 figures/              # gráficos PNG (gerados opcionalmente)
 src/
+  ├── config.py       # configurações centralizadas (capital inicial, taxas, etc.)
   ├── scenarios.py    # trajetórias de Selic e IPCA por cenário (36 meses)
   ├── rates.py        # conversões de taxas (anual↔mensal↔diária), IPCA+ composição
   ├── products.py     # simuladores: Tesouro, CDB, LCI, Poupança (com TR=0,17% a.m.)
@@ -99,12 +100,15 @@ requirements.txt      # dependências
 README.md
 ```
 
-### Parâmetros globais no código
-- **Valor inicial:** `100000.00`
-- **Prazo:** `36` meses
-- **Dias úteis/ano:** `252` 
-- **Custódia a.a.:** `0.002` (0,2%)
-- **IR:** `0.15` (para 3 anos, quando aplicável)
+### Configurações centralizadas (`src/config.py`)
+Para alterar facilmente os parâmetros do projeto, edite o arquivo `src/config.py`:
+- **CAPITAL_INICIAL:** `100000.0` (R$ 100.000,00) ← **Altere aqui para mudar o valor em todo o projeto**
+- **TAXA_CUSTODIA_ANUAL:** `0.002` (0,2% a.a.)
+- **ALIQUOTA_IR_3_ANOS:** `0.15` (15% para 3 anos)
+- **DIAS_UTEIS_POR_ANO:** `252` (padrão do mercado brasileiro)
+- **TR_MENSAL_FIXA:** `0.0017` (0,17% a.m. para poupança)
+
+**Exemplo:** Para simular com R$ 50.000,00, altere `CAPITAL_INICIAL = 50000.0` no arquivo `src/config.py`.
 
 ### Definição dos cenários em `scenarios.py`
 - Função que retorna um DataFrame por cenário com colunas: `ano`, `selic_aa`, `ipca_aa`.

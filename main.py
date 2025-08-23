@@ -14,8 +14,12 @@ def _ensure_src_on_path() -> None:
 
 
 def parse_args() -> argparse.Namespace:
+    # Importa após garantir que src está no path
+    _ensure_src_on_path()
+    from src.config import CAPITAL_INICIAL
+    
     parser = argparse.ArgumentParser(description="Executa simulações dos cenários e produtos.")
-    parser.add_argument("--initial", type=float, default=100_000.0, help="Valor inicial (R$)")
+    parser.add_argument("--initial", type=float, default=CAPITAL_INICIAL, help="Valor inicial (R$)")
     parser.add_argument("--save-figures", action="store_true", help="Salvar gráficos em figures/")
     parser.add_argument("--fig-dir", type=str, default="figures", help="Diretório para salvar gráficos")
     parser.add_argument("--save-results", action="store_true", help="Salvar resumos em CSV (pasta data/)")
@@ -25,7 +29,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     _ensure_src_on_path()
-
+    
     from src.simulate import run_all_with_timelines
     from src.plots import plot_all_scenarios_summary
 
