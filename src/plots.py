@@ -622,102 +622,238 @@ def plot_all_scenarios_individual(results_by_scenario: Dict[str, object], save_d
     return figures
 
 
-def create_interactive_dashboard(results_by_scenario: Dict[str, object], save_path: Optional[str] = None, show: bool = False) -> go.Figure:
-    """Cria dashboard interativo com múltiplos gráficos."""
+def create_interactive_dashboard(results_data: Dict[str, Dict], save_path: Optional[str] = None, show: bool = False) -> go.Figure:
+    """Cria dashboard interativo completo com análise abrangente dos 3 cenários e 6 investimentos."""
     
     from plotly.subplots import make_subplots
     
-    # Criar subplots
+    # Criar subplots com layout 3x2 para mais análises
     fig = make_subplots(
-        rows=2, cols=2,
-        subplot_titles=("Comparação por Cenário", "Evolução Temporal", "Distribuição de Produtos", "Análise de Rentabilidade"),
-        specs=[[{"type": "bar"}, {"type": "scatter"}],
-               [{"type": "pie"}, {"type": "bar"}]]
+        rows=3, cols=2,
+        subplot_titles=(
+            "Comparação de VF Líquido por Cenário", 
+            "Evolução Temporal - Tesouro Selic",
+            "Rentabilidade por Produto (%)", 
+            "Evolução Temporal - Todos os Produtos",
+            "Análise de Risco-Retorno", 
+            "Performance Relativa por Cenário"
+        ),
+        specs=[
+            [{"type": "bar"}, {"type": "scatter"}],
+            [{"type": "bar"}, {"type": "scatter"}], 
+            [{"type": "scatter"}, {"type": "bar"}]
+        ],
+        vertical_spacing=0.12,
+        horizontal_spacing=0.1
     )
     
     # Cores para cenários
-    colors = ['#2E86AB', '#A23B72', '#F18F01']
+    scenario_colors = {
+        'Cenario 1 - Manutencao': '#2E86AB',
+        'Cenario 2 - Aperto': '#A23B72', 
+        'Cenario 3 - Afrouxamento': '#F18F01'
+    }
     
-    # Gráfico 1: Comparação por cenário (primeiro cenário como exemplo)
-    primeiro_cenario = list(results_by_scenario.values())[0]
-    df_plot = primeiro_cenario.sort_values("vf_liquido", ascending=True)
+    # Cores para produtos
+    product_colors = {
+        'Tesouro Selic': '#2E86AB',
+        'Tesouro Prefixado': '#C73E1D',
+        'Tesouro IPCA+': '#6A994E',
+        'CDB 100% CDI': '#F18F01',
+        'LCI': '#A23B72',
+        'Poupanca': '#8E44AD'
+    }
     
-    fig.add_trace(
-        go.Bar(
-            y=df_plot["produto"],
-            x=df_plot["vf_liquido"],
-            orientation='h',
-            marker_color='#2E86AB',
-            name="VF Líquido",
-            showlegend=False
-        ),
-        row=1, col=1
-    )
+    # Preparar dados dos cenários
+    results_by_scenario = {name: data["summary"] for name, data in results_data.items()}
     
-    # Gráfico 2: Evolução temporal (exemplo com primeiro produto)
-    # Este seria mais complexo, simplificando para demonstração
-    periodos = list(range(1, 757))  # 756 dias úteis
-    valores_exemplo = [100000 * (1.15/252 + 1) ** i for i in periodos]
+    # GRÁFICO 1: Comparação de VF Líquido por Cenário (Barras Agrupadas)
+    produtos = ["Tesouro Selic", "Tesouro Prefixado", "Tesouro IPCA+", "CDB 100% CDI", "LCI", "Poupanca"]
     
-    fig.add_trace(
-        go.Scatter(
-            x=periodos,
-            y=valores_exemplo,
-            mode='lines',
-            name="Evolução",
-            line=dict(color='#A23B72'),
-            showlegend=False
-        ),
-        row=1, col=2
-    )
+    for i, (scenario_name, df_summary) in enumerate(results_by_scenario.items()):
+        vf_liquidos = []
+        for produto in produtos:
+            produto_data = df_summary[df_summary["produto"] == produto]
+            vf_liquido = produto_data["vf_liquido"].iloc[0] if not produto_data.empty else 0
+            vf_liquidos.append(vf_liquido)
+        
+        fig.add_trace(
+            go.Bar(
+                x=produtos,
+                y=vf_liquidos,
+                name=scenario_name,
+                marker_color=scenario_colors[scenario_name],
+                hovertemplate='<b>%{x}</b><br>Cenário: ' + scenario_name + '<br>VF Líquido: R$ %{y:,.0f}<extra></extra>'
+            ),
+            row=1, col=1
+        )
     
-    # Gráfico 3: Distribuição (pie chart)
-    fig.add_trace(
-        go.Pie(
-            labels=df_plot["produto"],
-            values=df_plot["vf_liquido"],
-            marker_colors=colors[:len(df_plot)],
-            showlegend=False
-        ),
-        row=2, col=1
-    )
+    # GRÁFICO 2: Evolução Temporal - Tesouro Selic
+    for scenario_name, data in results_data.items():
+        timelines = data.get("timelines", {})
+        if "Tesouro_Selic" in timelines:
+            timeline_df = timelines["Tesouro_Selic"]
+            dates = pd.date_range(start="2025-01-01", periods=len(timeline_df), freq='B').date
+            
+            fig.add_trace(
+                go.Scatter(
+                    x=dates,
+                    y=timeline_df["saldo_liquido_estimado"],
+                    mode='lines',
+                    name=f'Selic - {scenario_name}',
+                    line=dict(color=scenario_colors[scenario_name], width=2),
+                    hovertemplate='<b>Tesouro Selic</b><br>Data: %{x}<br>Saldo: R$ %{y:,.0f}<br>Cenário: ' + scenario_name + '<extra></extra>',
+                    showlegend=False
+                ),
+                row=1, col=2
+            )
     
-    # Gráfico 4: Análise de rentabilidade
-    rentabilidade = ((df_plot["vf_liquido"] / 100000) - 1) * 100  # Assumindo capital inicial de 100k
+    # GRÁFICO 3: Rentabilidade por Produto (%)
+    for scenario_name, df_summary in results_by_scenario.items():
+        produtos_cenario = []
+        rentabilidades = []
+        
+        for produto in produtos:
+            produto_data = df_summary[df_summary["produto"] == produto]
+            if not produto_data.empty:
+                vf_liquido = produto_data["vf_liquido"].iloc[0]
+                rentabilidade = ((vf_liquido / 100000) - 1) * 100
+                produtos_cenario.append(produto)
+                rentabilidades.append(rentabilidade)
+        
+        fig.add_trace(
+            go.Bar(
+                x=produtos_cenario,
+                y=rentabilidades,
+                name=f'Rent. {scenario_name}',
+                marker_color=scenario_colors[scenario_name],
+                hovertemplate='<b>%{x}</b><br>Cenário: ' + scenario_name + '<br>Rentabilidade: %{y:.1f}%<extra></extra>',
+                showlegend=False
+            ),
+            row=2, col=1
+        )
     
-    fig.add_trace(
-        go.Bar(
-            x=df_plot["produto"],
-            y=rentabilidade,
-            marker_color='#F18F01',
-            name="Rentabilidade %",
-            showlegend=False
-        ),
-        row=2, col=2
-    )
+    # GRÁFICO 4: Evolução Temporal - Todos os Produtos (Cenário 1)
+    primeiro_cenario_data = list(results_data.values())[0]
+    timelines = primeiro_cenario_data.get("timelines", {})
     
-    # Atualizar layout
+    for produto_key, timeline_df in timelines.items():
+        produto_nome = format_product_name(produto_key)
+        if produto_nome in product_colors:
+            dates = pd.date_range(start="2025-01-01", periods=len(timeline_df), freq='B').date
+            
+            fig.add_trace(
+                go.Scatter(
+                    x=dates,
+                    y=timeline_df["saldo_liquido_estimado"],
+                    mode='lines',
+                    name=produto_nome,
+                    line=dict(color=product_colors[produto_nome], width=1.5),
+                    hovertemplate='<b>' + produto_nome + '</b><br>Data: %{x}<br>Saldo: R$ %{y:,.0f}<extra></extra>',
+                    showlegend=False
+                ),
+                row=2, col=2
+            )
+    
+    # GRÁFICO 5: Análise de Risco-Retorno (Rentabilidade vs Volatilidade)
+    for produto in produtos:
+        rentabilidades_produto = []
+        for scenario_name, df_summary in results_by_scenario.items():
+            produto_data = df_summary[df_summary["produto"] == produto]
+            if not produto_data.empty:
+                vf_liquido = produto_data["vf_liquido"].iloc[0]
+                rentabilidade = ((vf_liquido / 100000) - 1) * 100
+                rentabilidades_produto.append(rentabilidade)
+        
+        if rentabilidades_produto:
+            rentabilidade_media = sum(rentabilidades_produto) / len(rentabilidades_produto)
+            volatilidade = (max(rentabilidades_produto) - min(rentabilidades_produto)) / 2  # Aproximação simples
+            
+            fig.add_trace(
+                go.Scatter(
+                    x=[volatilidade],
+                    y=[rentabilidade_media],
+                    mode='markers+text',
+                    text=[produto.replace(' ', '<br>')],
+                    textposition='top center',
+                    marker=dict(
+                        size=15,
+                        color=product_colors.get(produto, '#95A5A6'),
+                        line=dict(width=2, color='white')
+                    ),
+                    name=produto,
+                    hovertemplate='<b>' + produto + '</b><br>Rentabilidade Média: %{y:.1f}%<br>Volatilidade: %{x:.1f}%<extra></extra>',
+                    showlegend=False
+                ),
+                row=3, col=1
+            )
+    
+    # GRÁFICO 6: Performance Relativa por Cenário (normalizado para 100%)
+    cenarios = list(results_by_scenario.keys())
+    for produto in produtos:
+        performance_relativa = []
+        
+        for scenario_name, df_summary in results_by_scenario.items():
+            produto_data = df_summary[df_summary["produto"] == produto]
+            if not produto_data.empty:
+                vf_liquido = produto_data["vf_liquido"].iloc[0]
+                rentabilidade = ((vf_liquido / 100000) - 1) * 100
+                performance_relativa.append(rentabilidade)
+        
+        if performance_relativa:
+            fig.add_trace(
+                go.Bar(
+                    x=cenarios,
+                    y=performance_relativa,
+                    name=produto,
+                    marker_color=product_colors.get(produto, '#95A5A6'),
+                    hovertemplate='<b>' + produto + '</b><br>Cenário: %{x}<br>Rentabilidade: %{y:.1f}%<extra></extra>',
+                    showlegend=False
+                ),
+                row=3, col=2
+            )
+    
+    # Atualizar layout geral
     fig.update_layout(
         title={
-            'text': "Dashboard Interativo - Análise de Investimentos",
+            'text': "Dashboard Interativo Completo - Análise de Investimentos<br><span style='font-size:14px'>3 Cenários Econômicos × 6 Produtos de Investimento × 3 Anos</span>",
             'x': 0.5,
             'xanchor': 'center',
-            'font': {'size': 20, 'color': '#2E86AB'}
+            'font': {'size': 18, 'color': '#2E86AB'}
         },
-        height=800,
-        width=1200,
+        height=1200,
+        width=1400,
         plot_bgcolor='white',
         paper_bgcolor='white',
-        font=dict(family="Arial, sans-serif", size=10)
+        font=dict(family="Arial, sans-serif", size=10),
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=-0.05,
+            xanchor="center",
+            x=0.5
+        )
     )
     
-    # Atualizar eixos
-    fig.update_xaxes(title_text="VF Líquido (R$)", row=1, col=1)
-    fig.update_yaxes(title_text="Produtos", row=1, col=1)
-    fig.update_xaxes(title_text="Período (dias)", row=1, col=2)
-    fig.update_yaxes(title_text="Valor (R$)", row=1, col=2)
-    fig.update_xaxes(title_text="Produtos", row=2, col=2)
-    fig.update_yaxes(title_text="Rentabilidade (%)", row=2, col=2)
+    # Atualizar eixos específicos
+    fig.update_xaxes(title_text="Produtos", row=1, col=1, tickangle=45)
+    fig.update_yaxes(title_text="VF Líquido (R$)", row=1, col=1, tickformat=',.0f')
+    
+    fig.update_xaxes(title_text="Data", row=1, col=2, tickformat='%m/%Y')
+    fig.update_yaxes(title_text="Saldo Líquido (R$)", row=1, col=2, tickformat=',.0f')
+    
+    fig.update_xaxes(title_text="Produtos", row=2, col=1, tickangle=45)
+    fig.update_yaxes(title_text="Rentabilidade (%)", row=2, col=1, ticksuffix='%')
+    
+    fig.update_xaxes(title_text="Data", row=2, col=2, tickformat='%m/%Y')
+    fig.update_yaxes(title_text="Saldo Líquido (R$)", row=2, col=2, tickformat=',.0f')
+    
+    fig.update_xaxes(title_text="Volatilidade (%)", row=3, col=1, ticksuffix='%')
+    fig.update_yaxes(title_text="Rentabilidade Média (%)", row=3, col=1, ticksuffix='%')
+    
+    fig.update_xaxes(title_text="Cenários", row=3, col=2)
+    fig.update_yaxes(title_text="Rentabilidade (%)", row=3, col=2, ticksuffix='%')
     
     if save_path:
         pio.write_html(fig, save_path)
@@ -859,7 +995,7 @@ def generate_all_plots(results_data: Dict[str, Dict], args, fig_dir: str) -> Non
     """Centraliza toda a lógica de geração de gráficos baseada nos argumentos CLI."""
     
     # Verificar se deve gerar gráficos
-    if not (args.save_figures or args.plotly or args.individual or args.evolucao or args.rentabilidade):
+    if not (args.save_figures or args.plotly or args.individual or args.evolucao or args.rentabilidade or args.dashboard):
         return
     
     # Criar diretório de figuras
@@ -868,7 +1004,7 @@ def generate_all_plots(results_data: Dict[str, Dict], args, fig_dir: str) -> Non
     # Preparar dados para gráficos
     results_by_scenario = {name: data["summary"] for name, data in results_data.items()}
     
-    if args.plotly or args.individual or args.evolucao or args.rentabilidade:
+    if args.plotly or args.individual or args.evolucao or args.rentabilidade or args.dashboard:
         # Gráficos Plotly interativos
         print("\n🎨 Gerando gráficos interativos com Plotly...")
         
@@ -918,11 +1054,11 @@ def generate_all_plots(results_data: Dict[str, Dict], args, fig_dir: str) -> Non
         # Dashboard interativo
         if args.dashboard:
             create_interactive_dashboard(
-                results_by_scenario,
+                results_data,  # Usar results completo com timelines
                 save_path=f"{fig_dir}/dashboard_interativo.html",
                 show=False
             )
-            print(f"📊 Dashboard interativo salvo: {fig_dir}/dashboard_interativo.html")
+            print(f"📊 Dashboard interativo completo salvo: {fig_dir}/dashboard_interativo.html")
         
         print(f"🎯 Gráficos Plotly salvos em: {os.path.abspath(fig_dir)}")
     else:
