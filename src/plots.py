@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import Dict, Optional
 import pandas as pd
 
@@ -732,8 +733,8 @@ def plot_rentability_by_product(results_data: Dict[str, Dict], save_dir: Optiona
     
     figures = []
     
-    # Produtos na ordem desejada (excluindo Poupança que tem performance menor)
-    produtos_ordem = ["Tesouro Selic", "Tesouro Prefixado", "Tesouro IPCA+", "CDB 100% CDI", "LCI"]
+    # Produtos na ordem desejada
+    produtos_ordem = ["Tesouro Selic", "Tesouro Prefixado", "Tesouro IPCA+", "CDB 100% CDI", "LCI", "Poupanca"]
     
     # Cores para cenários
     scenario_colors = {
@@ -854,6 +855,81 @@ def format_product_name(produto_key: str) -> str:
         return produto_key.replace('_', ' ')
 
 
+def generate_all_plots(results_data: Dict[str, Dict], args, fig_dir: str) -> None:
+    """Centraliza toda a lógica de geração de gráficos baseada nos argumentos CLI."""
+    
+    # Verificar se deve gerar gráficos
+    if not (args.save_figures or args.plotly or args.individual or args.evolucao or args.rentabilidade):
+        return
+    
+    # Criar diretório de figuras
+    os.makedirs(fig_dir, exist_ok=True)
+    
+    # Preparar dados para gráficos
+    results_by_scenario = {name: data["summary"] for name, data in results_data.items()}
+    
+    if args.plotly or args.individual or args.evolucao or args.rentabilidade:
+        # Gráficos Plotly interativos
+        print("\n🎨 Gerando gráficos interativos com Plotly...")
+        
+        # Gráficos de evolução temporal
+        if args.evolucao:
+            evolution_figures = plot_evolution_by_scenario(
+                results_data,
+                save_dir=fig_dir,
+                show=False
+            )
+            print(f"📈 {len(evolution_figures)} gráficos de evolução criados (um por cenário)")
+            
+            # Gráfico comparativo de evolução
+            plot_evolution_comparison(
+                results_data,
+                save_path=f"{fig_dir}/evolucao_comparativa.png",
+                show=False
+            )
+            print("📊 Gráfico comparativo de evolução criado")
+        
+        # Gráficos individuais por cenário
+        if args.individual:
+            individual_figures = plot_all_scenarios_individual(
+                results_by_scenario,
+                save_dir=fig_dir,
+                show=False
+            )
+            print(f"📈 {len(individual_figures)} gráficos individuais criados (um por cenário)")
+        
+        # Gráficos de rentabilidade por produto
+        if args.rentabilidade:
+            rentability_figures = plot_rentability_by_product(
+                results_data,  # Usar results completo com timelines
+                save_dir=fig_dir,
+                show=False
+            )
+            print(f"📊 {len(rentability_figures)} gráficos de evolução da rentabilidade criados (um por produto)")
+        
+        # Gráfico comparativo de todos os cenários
+        if args.plotly and not args.individual and not args.evolucao:
+            plot_comparison_all_scenarios(
+                results_by_scenario, 
+                save_path=f"{fig_dir}/comparacao_cenarios.png",
+                show=False
+            )
+        
+        # Dashboard interativo
+        if args.dashboard:
+            create_interactive_dashboard(
+                results_by_scenario,
+                save_path=f"{fig_dir}/dashboard_interativo.html",
+                show=False
+            )
+            print(f"📊 Dashboard interativo salvo: {fig_dir}/dashboard_interativo.html")
+        
+        print(f"🎯 Gráficos Plotly salvos em: {os.path.abspath(fig_dir)}")
+    else:
+        # Gráficos tradicionais (Matplotlib)
+        plot_all_scenarios_summary(results_by_scenario=results_by_scenario, save_dir=fig_dir, show=False)
+
+
 __all__ = [
     "plot_summary_bar",
     "plot_timeline",
@@ -866,6 +942,7 @@ __all__ = [
     "plot_evolution_comparison",
     "plot_rentability_by_product",
     "create_interactive_dashboard",
+    "generate_all_plots",
     "format_product_name"
 ]
 
