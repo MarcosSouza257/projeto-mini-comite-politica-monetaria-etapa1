@@ -206,14 +206,40 @@ pip install -r requirements.txt
 ```
 python main.py
 ```
-- **Para salvar resultados (xlsx) e gráficos (PNGs):**
+
+- **Para salvar resultados (xlsx) e gráficos tradicionais:**
+```
+python main.py --save-results --save-figures
+```
+
+- **Para gráficos interativos com Plotly:**
+```
+python main.py --plotly --dashboard
+```
+
+- **Para gráficos individuais por cenário (3 gráficos):**
+```
+python main.py --individual
+```
+
+- **Para gráficos de evolução temporal com datas (4 gráficos):**
+```
+python main.py --evolucao
+```
+
+- **Comando completo com todas as opções:**
 ```
 python main.py --initial 100000 \
                --save-results --out-dir data \
-               --save-figures --fig-dir figures
+               --evolucao --dashboard --fig-dir figures
 ```
+
 **Saídas:**
 - `data/simulacao_por_titulo.xlsx` com aba por produto + aba resumo
-- `figures/*_summary.png` com VF líquido por produto
+- `figures/comparacao_cenarios.png` (Plotly comparativo) ou `figures/*_summary.png` (Matplotlib)
+- `figures/*_individual.png` (gráficos individuais por cenário)
+- `figures/*_evolucao.png` (gráficos de evolução temporal por cenário)
+- `figures/evolucao_comparativa.png` (comparação de evolução entre cenários)
+- `figures/dashboard_interativo.html` (dashboard interativo)
 
 ---

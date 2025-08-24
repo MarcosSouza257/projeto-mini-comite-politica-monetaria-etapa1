@@ -22,6 +22,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--initial", type=float, default=CAPITAL_INICIAL, help="Valor inicial (R$)")
     parser.add_argument("--save-figures", action="store_true", help="Salvar gráficos em figures/")
     parser.add_argument("--fig-dir", type=str, default="figures", help="Diretório para salvar gráficos")
+    parser.add_argument("--plotly", action="store_true", help="Usar Plotly para gráficos interativos")
+    parser.add_argument("--dashboard", action="store_true", help="Gerar dashboard interativo HTML")
+    parser.add_argument("--individual", action="store_true", help="Gerar gráfico individual para cada cenário")
+    parser.add_argument("--evolucao", action="store_true", help="Gerar gráficos de evolução temporal")
     parser.add_argument("--save-results", action="store_true", help="Salvar resumos em CSV (pasta data/)")
     parser.add_argument("--out-dir", type=str, default="data", help="Diretório para salvar resultados")
     return parser.parse_args()
@@ -31,7 +35,14 @@ def main() -> None:
     _ensure_src_on_path()
     
     from src.simulate import run_all_with_timelines
-    from src.plots import plot_all_scenarios_summary
+    from src.plots import (
+        plot_all_scenarios_summary, 
+        plot_comparison_all_scenarios,
+        plot_all_scenarios_individual,
+        plot_evolution_by_scenario,
+        plot_evolution_comparison,
+        create_interactive_dashboard
+    )
 
     args = parse_args()
     results = run_all_with_timelines(initial_value=args.initial)
@@ -97,10 +108,63 @@ def main() -> None:
         # print("Cada aba contém: resumos dos 3 cenários + timelines diárias de 756 dias úteis")
 
     # Gera gráficos, se solicitado
-    if args.save_figures:
+    if args.save_figures or args.plotly or args.individual or args.evolucao:
         os.makedirs(args.fig_dir, exist_ok=True)
-        plot_all_scenarios_summary(results_by_scenario=results, save_dir=args.fig_dir, show=True)
-        # print(f"\nGráficos salvos em: {os.path.abspath(args.fig_dir)}")
+        
+        # Preparar dados para gráficos
+        results_by_scenario = {name: data["summary"] for name, data in results.items()}
+        
+        if args.plotly or args.individual or args.evolucao:
+            # Gráficos Plotly interativos
+            print("\n🎨 Gerando gráficos interativos com Plotly...")
+            
+            # Gráficos de evolução temporal
+            if args.evolucao:
+                evolution_figures = plot_evolution_by_scenario(
+                    results,
+                    save_dir=args.fig_dir,
+                    show=False
+                )
+                print(f"📈 {len(evolution_figures)} gráficos de evolução criados (um por cenário)")
+                
+                # Gráfico comparativo de evolução
+                plot_evolution_comparison(
+                    results,
+                    save_path=f"{args.fig_dir}/evolucao_comparativa.png",
+                    show=False
+                )
+                print("📊 Gráfico comparativo de evolução criado")
+            
+            # Gráficos individuais por cenário
+            if args.individual:
+                individual_figures = plot_all_scenarios_individual(
+                    results_by_scenario,
+                    save_dir=args.fig_dir,
+                    show=False
+                )
+                print(f"📈 {len(individual_figures)} gráficos individuais criados (um por cenário)")
+            
+            # Gráfico comparativo de todos os cenários
+            if args.plotly and not args.individual and not args.evolucao:
+                plot_comparison_all_scenarios(
+                    results_by_scenario, 
+                    save_path=f"{args.fig_dir}/comparacao_cenarios.png",
+                    show=False
+                )
+            
+            # Dashboard interativo
+            if args.dashboard:
+                create_interactive_dashboard(
+                    results_by_scenario,
+                    save_path=f"{args.fig_dir}/dashboard_interativo.html",
+                    show=False
+                )
+                print(f"📊 Dashboard interativo salvo: {args.fig_dir}/dashboard_interativo.html")
+            
+            print(f"🎯 Gráficos Plotly salvos em: {os.path.abspath(args.fig_dir)}")
+        else:
+            # Gráficos tradicionais (Matplotlib)
+            plot_all_scenarios_summary(results_by_scenario=results_by_scenario, save_dir=args.fig_dir, show=False)
 
 
 if __name__ == "__main__":
