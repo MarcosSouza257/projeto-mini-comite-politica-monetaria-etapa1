@@ -727,6 +727,123 @@ def create_interactive_dashboard(results_by_scenario: Dict[str, object], save_pa
     return fig
 
 
+def plot_rentability_by_product(results_data: Dict[str, Dict], save_dir: Optional[str] = None, show: bool = False) -> list[go.Figure]:
+    """Cria gráficos de evolução temporal da rentabilidade por produto (total 5 gráficos)."""
+    
+    figures = []
+    
+    # Produtos na ordem desejada (excluindo Poupança que tem performance menor)
+    produtos_ordem = ["Tesouro Selic", "Tesouro Prefixado", "Tesouro IPCA+", "CDB 100% CDI", "LCI"]
+    
+    # Cores para cenários
+    scenario_colors = {
+        'Cenario 1 - Manutencao': '#2E86AB',
+        'Cenario 2 - Aperto': '#A23B72', 
+        'Cenario 3 - Afrouxamento': '#F18F01'
+    }
+    
+    for produto in produtos_ordem:
+        fig = go.Figure()
+        
+        # Procurar o produto em cada cenário
+        for scenario_name, data in results_data.items():
+            timelines = data.get("timelines", {})
+            
+            # Encontrar a chave correta do produto
+            produto_key = None
+            for key in timelines.keys():
+                if format_product_name(key) == produto:
+                    produto_key = key
+                    break
+            
+            if produto_key and produto_key in timelines:
+                timeline_df = timelines[produto_key]
+                color = scenario_colors.get(scenario_name, '#95A5A6')
+                
+                # Criar datas baseadas no período (iniciando em 2025-01-01)
+                dates = pd.date_range(start="2025-01-01", periods=len(timeline_df), freq='B').date
+                
+                # Calcular rentabilidade acumulada ao longo do tempo
+                rentabilidade_temporal = ((timeline_df["saldo_liquido_estimado"] / 100000) - 1) * 100
+                
+                # Linha da evolução da rentabilidade
+                fig.add_trace(go.Scatter(
+                    x=dates,
+                    y=rentabilidade_temporal,
+                    mode='lines',
+                    name=scenario_name,
+                    line=dict(color=color, width=2),
+                    hovertemplate=f'<b>{scenario_name}</b><br>Data: %{{x}}<br>Rentabilidade: %{{y:.1f}}%<br>Saldo: R$ %{{customdata:,.2f}}<extra></extra>',
+                    customdata=timeline_df["saldo_liquido_estimado"]
+                ))
+        
+        # Linha de referência em 0%
+        fig.add_hline(
+            y=0,
+            line_dash="dash",
+            line_color="gray",
+            annotation_text="Sem ganho/perda",
+            annotation_position="bottom right"
+        )
+        
+        fig.update_layout(
+            title={
+                'text': f"Evolução da Rentabilidade: {produto}<br><span style='font-size:14px'>Comparação Temporal entre Cenários</span>",
+                'x': 0.5,
+                'xanchor': 'center',
+                'font': {'size': 18, 'color': '#2E86AB'}
+            },
+            xaxis_title="Data",
+            yaxis_title="Rentabilidade Acumulada (%)",
+            height=500,
+            width=900,
+            margin=dict(l=60, r=60, t=100, b=80),
+            plot_bgcolor='white',
+            paper_bgcolor='white',
+            font=dict(family="Arial, sans-serif", size=12),
+            xaxis=dict(
+                gridcolor='lightgray',
+                gridwidth=0.5,
+                showline=True,
+                linecolor='gray',
+                tickformat='%d/%m/%Y',
+                dtick='M3',  # Mostrar marcas a cada 3 meses
+                tickangle=45  # Rotacionar datas em 45 graus
+            ),
+            yaxis=dict(
+                tickformat='.1f',
+                ticksuffix='%',
+                gridcolor='lightgray',
+                gridwidth=0.5,
+                showline=True,
+                linecolor='gray'
+            ),
+            legend=dict(
+                orientation="v",
+                x=0.98,
+                y=0.15,
+                xanchor="right",
+                yanchor="bottom",
+                bgcolor="rgba(255,255,255,0.6)",  # fundo translúcido
+                bordercolor="lightgray",
+                borderwidth=1
+            )
+        )
+        
+        # Salvar gráfico
+        if save_dir:
+            produto_clean = produto.replace(' ', '_').replace('+', 'Plus').replace('%', 'pct')
+            save_path = f"{save_dir}/{produto_clean.lower()}_rentabilidade_evolucao.png"
+            pio.write_image(fig, save_path, width=900, height=500, scale=2)
+        
+        if show:
+            fig.show()
+        
+        figures.append(fig)
+    
+    return figures
+
+
 def format_product_name(produto_key: str) -> str:
     """Converte nomes de produtos para exibição nos gráficos."""
     if produto_key == 'Tesouro_IPCA_Plus':
@@ -747,6 +864,7 @@ __all__ = [
     "plot_all_scenarios_individual",
     "plot_evolution_by_scenario",
     "plot_evolution_comparison",
+    "plot_rentability_by_product",
     "create_interactive_dashboard",
     "format_product_name"
 ]

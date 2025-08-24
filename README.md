@@ -227,11 +227,16 @@ python main.py --individual
 python main.py --evolucao
 ```
 
+- **Para gráficos de evolução da rentabilidade por produto (5 gráficos):**
+```
+python main.py --rentabilidade
+```
+
 - **Comando completo com todas as opções:**
 ```
 python main.py --initial 100000 \
                --save-results --out-dir data \
-               --evolucao --dashboard --fig-dir figures
+               --evolucao --rentabilidade --dashboard --fig-dir figures
 ```
 
 **Saídas:**

@@ -26,6 +26,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dashboard", action="store_true", help="Gerar dashboard interativo HTML")
     parser.add_argument("--individual", action="store_true", help="Gerar gráfico individual para cada cenário")
     parser.add_argument("--evolucao", action="store_true", help="Gerar gráficos de evolução temporal")
+    parser.add_argument("--rentabilidade", action="store_true", help="Gerar gráficos de rentabilidade por produto")
     parser.add_argument("--save-results", action="store_true", help="Salvar resumos em CSV (pasta data/)")
     parser.add_argument("--out-dir", type=str, default="data", help="Diretório para salvar resultados")
     return parser.parse_args()
@@ -41,6 +42,7 @@ def main() -> None:
         plot_all_scenarios_individual,
         plot_evolution_by_scenario,
         plot_evolution_comparison,
+        plot_rentability_by_product,
         create_interactive_dashboard
     )
 
@@ -108,13 +110,13 @@ def main() -> None:
         # print("Cada aba contém: resumos dos 3 cenários + timelines diárias de 756 dias úteis")
 
     # Gera gráficos, se solicitado
-    if args.save_figures or args.plotly or args.individual or args.evolucao:
+    if args.save_figures or args.plotly or args.individual or args.evolucao or args.rentabilidade:
         os.makedirs(args.fig_dir, exist_ok=True)
         
         # Preparar dados para gráficos
         results_by_scenario = {name: data["summary"] for name, data in results.items()}
         
-        if args.plotly or args.individual or args.evolucao:
+        if args.plotly or args.individual or args.evolucao or args.rentabilidade:
             # Gráficos Plotly interativos
             print("\n🎨 Gerando gráficos interativos com Plotly...")
             
@@ -143,6 +145,15 @@ def main() -> None:
                     show=False
                 )
                 print(f"📈 {len(individual_figures)} gráficos individuais criados (um por cenário)")
+            
+            # Gráficos de rentabilidade por produto
+            if args.rentabilidade:
+                rentability_figures = plot_rentability_by_product(
+                    results,  # Usar results completo com timelines
+                    save_dir=args.fig_dir,
+                    show=False
+                )
+                print(f"📊 {len(rentability_figures)} gráficos de evolução da rentabilidade criados (um por produto)")
             
             # Gráfico comparativo de todos os cenários
             if args.plotly and not args.individual and not args.evolucao:
