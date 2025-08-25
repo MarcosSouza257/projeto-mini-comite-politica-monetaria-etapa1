@@ -37,6 +37,9 @@ def get_ir_rate_by_days(dias: int) -> float:
 def get_ir_rate_by_periods(periodo: int, periods_per_year: int) -> float:
     """Retorna a alíquota de IR baseada no período de aplicação.
     
+    Converte períodos (dias úteis ou meses) para dias corridos conforme 
+    a tabela regressiva do IR que usa dias de calendário.
+    
     Args:
         periodo: Número do período (0-based)
         periods_per_year: Períodos por ano (12 para mensal, 252 para diário)
@@ -44,13 +47,15 @@ def get_ir_rate_by_periods(periodo: int, periods_per_year: int) -> float:
     Returns:
         float: Alíquota de IR
     """
-    # Converte período para dias
+    # Converte período para dias corridos
     if periods_per_year == 252:  # Simulação diária
-        dias = periodo + 1  # +1 porque período é 0-based
+        # Conversão dias úteis → dias corridos: 365.25 dias/ano ÷ 252 dias úteis/ano
+        fator_conversao = 365.25 / 252  # ≈ 1.449
+        dias_corridos = int((periodo + 1) * fator_conversao)
     else:  # Simulação mensal
-        dias = (periodo + 1) * 30  # Aproximação de 30 dias por mês
+        dias_corridos = (periodo + 1) * 30  # Aproximação de 30 dias por mês
     
-    return get_ir_rate_by_days(dias)
+    return get_ir_rate_by_days(dias_corridos)
 
 
 def calculate_ir_provision(valor_inicial: float, saldo_atual: float, periodo: int, periods_per_year: int, ir_exempt: bool = False) -> float:
